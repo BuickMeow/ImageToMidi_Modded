@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29001.49
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageToMidi", "ImageToMidi\ImageToMidi.csproj", "{C54F355C-67F8-4D88-9E6E-94E134E49A27}"
 EndProject
@@ -10,17 +10,25 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{C54F355C-67F8-4D88-9E6E-94E134E49A27}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C54F355C-67F8-4D88-9E6E-94E134E49A27}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C54F355C-67F8-4D88-9E6E-94E134E49A27}.Debug|x64.ActiveCfg = Debug|x64
+		{C54F355C-67F8-4D88-9E6E-94E134E49A27}.Debug|x64.Build.0 = Debug|x64
 		{C54F355C-67F8-4D88-9E6E-94E134E49A27}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C54F355C-67F8-4D88-9E6E-94E134E49A27}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C54F355C-67F8-4D88-9E6E-94E134E49A27}.Release|x64.ActiveCfg = Release|x64
+		{C54F355C-67F8-4D88-9E6E-94E134E49A27}.Release|x64.Build.0 = Release|x64
 		{49122F52-0B71-46BE-9F86-17A53C7FF333}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{49122F52-0B71-46BE-9F86-17A53C7FF333}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49122F52-0B71-46BE-9F86-17A53C7FF333}.Debug|x64.ActiveCfg = Debug|Any CPU
 		{49122F52-0B71-46BE-9F86-17A53C7FF333}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{49122F52-0B71-46BE-9F86-17A53C7FF333}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49122F52-0B71-46BE-9F86-17A53C7FF333}.Release|x64.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
