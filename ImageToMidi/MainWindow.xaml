@@ -12,8 +12,8 @@
         TextOptions.TextFormattingMode="Ideal" 
         TextOptions.TextRenderingMode="Auto"        
         Background="{DynamicResource MaterialDesignPaper}"
-        FontFamily="{DynamicResource MaterialDesignFont}"
-        Title="Image To MIDI" Height="496" Width="1186" WindowStyle="None">
+        FontFamily="Misans, Microsoft YaHei"
+        Title="图片转MIDI工具——节能降耗汉化" Height="496" Width="1186" WindowStyle="None">
     <Window.Resources>
         <BitmapImage x:Key="Icon" UriSource="i2m.png" />
     </Window.Resources>
@@ -40,7 +40,7 @@
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
             <DockPanel LastChildFill="True" Margin="10">
-                <Button DockPanel.Dock="Top" x:Name="browseImage" Content="Browse" materialDesign:RippleAssist.RippleSizeMultiplier="2" Margin="0,0,0,15" Click="BrowseImage_Click"/>
+                <Button DockPanel.Dock="Top" x:Name="browseImage" Content="选择图片" materialDesign:RippleAssist.RippleSizeMultiplier="2" Margin="0,0,0,15" Click="BrowseImage_Click"/>
                 <Grid Background="#37474F">
                     <!--<Image x:Name="openedImage" RenderOptions.BitmapScalingMode="NearestNeighbor" MouseDown="OpenedImage_MouseDown"/>-->
                     <local:ZoomableImage ClickableColors="True" ColorClicked="OpenedImage_ColorClicked" ScalingMode="NearestNeighbor" x:Name="openedImage"/>
@@ -56,8 +56,8 @@
                         <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="1*"/>
                     </Grid.ColumnDefinitions>
-                    <Button x:Name="rawMidiSelect" Background="Transparent" BorderBrush="Transparent" materialDesign:ShadowAssist.ShadowDepth="Depth0" Content="Set Colors" Height="Auto" Click="RawMidiSelect_Click"/>
-                    <Button x:Name="colorEventsSelect" Grid.Column="1" Background="Transparent" BorderBrush="Transparent" materialDesign:ShadowAssist.ShadowDepth="Depth0" Content="Auto Colors" Height="Auto" Click="ColorEventsSelect_Click"/>
+                    <Button x:Name="rawMidiSelect" Background="Transparent" BorderBrush="Transparent" materialDesign:ShadowAssist.ShadowDepth="Depth0" Content="手动设置颜色" Height="Auto" Click="RawMidiSelect_Click"/>
+                    <Button x:Name="colorEventsSelect" Grid.Column="1" Background="Transparent" BorderBrush="Transparent" materialDesign:ShadowAssist.ShadowDepth="Depth0" Content="自动设置颜色" Height="Auto" Click="ColorEventsSelect_Click"/>
                     <Grid Grid.Row="1" ClipToBounds="True">
                         <Rectangle x:Name="selectedHighlightLeft" Fill="{DynamicResource PrimaryHueMidBrush}"/>
                     </Grid>
@@ -68,10 +68,10 @@
                 <Grid VerticalAlignment="Bottom" Height="126">
                     <DockPanel DockPanel.Dock="Bottom">
                         <CheckBox DockPanel.Dock="Left" Checked="GenColorEventsCheck_Checked" Unchecked="GenColorEventsCheck_Checked" IsChecked="True" Name="genColorEventsCheck" Padding="2" VerticalAlignment="Top">
-                            <Label Padding="2" Margin="0,2,0,0">Generate Color Events</Label>
+                            <Label Padding="2" Margin="0,2,0,0">生成颜色事件</Label>
                         </CheckBox>
                         <DockPanel Opacity="0" Name="randomSeedBox" DockPanel.Dock="Left" Grid.Column="0" HorizontalAlignment="Left" Margin="20,1,0,0" VerticalAlignment="Top">
-                            <Label>Preview color seed</Label>
+                            <Label>预览颜色种子</Label>
                             <local:NumberSelect ValueChanged="FirstKeyNumber_ValueChanged" x:Name="randomColorSeed" Margin="0,0,0,0" Value="0" Minimum="0" Maximum="254" Width="70"></local:NumberSelect>
                         </DockPanel>
                     </DockPanel>
@@ -82,25 +82,25 @@
                         </Grid.ColumnDefinitions>
                         <DockPanel Grid.Column="1" LastChildFill="False">
                             <Grid DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,7,0,0" VerticalAlignment="Top" Height="26">
-                                <Label>Ticks per Pixel</Label>
+                                <Label>每像素时值</Label>
                                 <local:NumberSelect x:Name="ticksPerPixel" Value="5" Width="80" Minimum="1" Maximum="65535" Margin="100,0,0,0"></local:NumberSelect>
                             </Grid>
                             <Grid DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,7,0,0" VerticalAlignment="Top" Height="26">
-                                <Label>MIDI PPQ</Label>
+                                <Label>MIDI 分辨率</Label>
                                 <local:NumberSelect x:Name="midiPPQ" Value="960" Width="80" Minimum="1" Maximum="65535" Margin="100,0,0,0"></local:NumberSelect>
                             </Grid>
                             <Grid DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Top" Height="26">
-                                <Label>Start Offset</Label>
+                                <Label>起始偏移</Label>
                                 <local:NumberSelect x:Name="startOffset" Value="0" Width="80" Minimum="0" Maximum="999999" Margin="100,0,0,0"></local:NumberSelect>
                             </Grid>
                         </DockPanel>
                         <DockPanel LastChildFill="False">
-                            <RadioButton IsEnabled="{Binding ElementName=useNoteLength, Path=IsChecked}" Name="startOfImage"  DockPanel.Dock="Bottom" Content="Start of the Image" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,5,0,0" Checked="StartOfImage_Checked"/>
-                            <RadioButton IsChecked="True" IsEnabled="{Binding ElementName=useNoteLength, Path=IsChecked}" Name="startOfNotes" DockPanel.Dock="Bottom" Content="Start of the Notes" HorizontalAlignment="Left" Grid.Row="1" VerticalAlignment="Top" Margin="5,0,0,0" Checked="StartOfNotes_Checked"/>
-                            <Label IsEnabled="{Binding ElementName=useNoteLength, Path=IsChecked}" DockPanel.Dock="Bottom">Measure note length from...</Label>
+                            <RadioButton IsEnabled="{Binding ElementName=useNoteLength, Path=IsChecked}" Name="startOfImage"  DockPanel.Dock="Bottom" Content="图片起始处" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,5,0,0" Checked="StartOfImage_Checked"/>
+                            <RadioButton IsChecked="True" IsEnabled="{Binding ElementName=useNoteLength, Path=IsChecked}" Name="startOfNotes" DockPanel.Dock="Bottom" Content="音符起始处" HorizontalAlignment="Left" Grid.Row="1" VerticalAlignment="Top" Margin="5,0,0,0" Checked="StartOfNotes_Checked"/>
+                            <Label IsEnabled="{Binding ElementName=useNoteLength, Path=IsChecked}" DockPanel.Dock="Bottom">测量音符时值的位置</Label>
                             <DockPanel DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,5,0,0" VerticalAlignment="Top" Height="26">
                                 <CheckBox Name="useNoteLength" Margin="0,0,0,0" Unchecked="UseNoteLength_Checked" Checked="UseNoteLength_Checked">
-                                    <Label Margin="-5,-1,0,0">Maximum Note Length</Label>
+                                    <Label Margin="-5,-1,0,0">最大音符长度</Label>
                                 </CheckBox>
                                 <local:NumberSelect ValueChanged="NoteSplitLength_ValueChanged" x:Name="noteSplitLength" IsEnabled="{Binding ElementName=useNoteLength, Path=IsChecked}" Width="80" Minimum="1" Value="5" Maximum="65535" Margin="5,0,0,0"></local:NumberSelect>
                             </DockPanel>
@@ -109,18 +109,18 @@
                 </Grid>
             </Grid>
             <DockPanel LastChildFill="True" Margin="10" Grid.Column="2">
-                <Button IsEnabled="False" ClipToBounds="True" Content="Export MIDI" Padding="0" DockPanel.Dock="Bottom" x:Name="saveMidi" materialDesign:RippleAssist.RippleSizeMultiplier="2" Margin="0,15,0,0" Click="SaveMidi_Click"/>
+                <Button IsEnabled="False" ClipToBounds="True" Content="导出 MIDI" Padding="0" DockPanel.Dock="Bottom" x:Name="saveMidi" materialDesign:RippleAssist.RippleSizeMultiplier="2" Margin="0,15,0,0" Click="SaveMidi_Click"/>
                 <Grid Margin="0,0,0,10" DockPanel.Dock="Top">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="1*"/>
                     </Grid.ColumnDefinitions>
                     <DockPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,0">
-                        <Label>First Key</Label>
+                        <Label>最左侧琴键</Label>
                         <local:NumberSelect ValueChanged="FirstKeyNumber_ValueChanged" x:Name="firstKeyNumber" Margin="5,0,0,0" Value="0" Minimum="0" Maximum="254" Width="70"></local:NumberSelect>
                     </DockPanel>
                     <DockPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,0">
-                        <Label>Last Key</Label>
+                        <Label>最右侧琴键</Label>
                         <local:NumberSelect ValueChanged="LastKeyNumber_ValueChanged" x:Name="lastKeyNumber" Margin="5,0,0,0" Value="127" Minimum="1" Maximum="255" Width="70"></local:NumberSelect>
                     </DockPanel>
                 </Grid>
@@ -147,10 +147,10 @@
                 <TabItem Opacity="0">
                     <Grid Margin="0,0,0,0">
                         <DockPanel DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,5,0,0" VerticalAlignment="Top" Height="26">
-                            <Label>Track Count</Label>
+                            <Label>颜色行数（每行16色）</Label>
                             <local:NumberSelect x:Name="trackCount" ValueChanged="TrackCount_ValueChanged" Width="80" Minimum="1" Maximum="16" Value="1"></local:NumberSelect>
-                            <Button Name="clusterisePalette" Height="Auto" Padding="0,1.5,0,0" Width="90" Margin="10,0,0,0" Click="ClusterisePalette_Click">Clusterise</Button>
-                            <Button Name="resetPalette" Height="Auto" Padding="0,1.5,0,0" Width="70" Margin="5,0,0,0" Click="ResetPalette_Click">Reset</Button>
+                            <Button Name="clusterisePalette" Height="Auto" Padding="0,1.5,0,0" Width="90" Margin="10,0,0,0" Click="ClusterisePalette_Click">聚类化</Button>
+                            <Button Name="resetPalette" Height="Auto" Padding="0,1.5,0,0" Width="70" Margin="5,0,0,0" Click="ResetPalette_Click">重置</Button>
                         </DockPanel>
                         <ScrollViewer Margin="0,40,0,0">
                             <DockPanel Name="autoPaletteBox">

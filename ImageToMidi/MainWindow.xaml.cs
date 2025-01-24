@@ -151,7 +151,7 @@ namespace ImageToMidi
         {
             colPicker.CancelPick(); 
             OpenFileDialog open = new OpenFileDialog();
-            open.Filter = "Common image files (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp";
+            open.Filter = "图片 (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp";
             if (!(bool)open.ShowDialog()) return;
             openedImagePath = open.FileName;
             BitmapImage src = new BitmapImage();
@@ -329,7 +329,7 @@ namespace ImageToMidi
         {
             colPicker.CancelPick(); 
             SaveFileDialog save = new SaveFileDialog();
-            save.Filter = "Midi files (*.mid)|*.mid";
+            save.Filter = "MIDI文件 (*.mid)|*.mid";
             if (!(bool)save.ShowDialog()) return;
             try
             {
@@ -341,7 +341,7 @@ namespace ImageToMidi
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.ToString(), "An error happened");
+                MessageBox.Show(ex.ToString(), "Image To MIDI被玩坏了！<LineBreak/>这肯定不是节能酱的问题！<LineBreak/>绝对不是！");
             }
         }
 
@@ -414,7 +414,7 @@ namespace ImageToMidi
 
         Color ParseHex(string hex, bool checkLen = false)
         {
-            if (hex.Length != 6 && checkLen) throw new Exception("Invalid hex");
+            if (hex.Length != 6 && checkLen) throw new Exception("十六进制值无效");
             if (hex.Length == 0 && !checkLen) return Colors.Black;
             try
             {
@@ -426,7 +426,7 @@ namespace ImageToMidi
                     );
                 return c;
             }
-            catch { throw new Exception("Invalid hex"); }
+            catch { throw new Exception("十六进制RGB色号无效"); }
         }
 
         private void ColHex_TextChanged(object sender, TextChangedEventArgs e)
@@ -450,7 +450,7 @@ namespace ImageToMidi
                 }
                 catch
                 {
-                    MessageBox.Show("Invalid hex RGB color");
+                    MessageBox.Show("十六进制RGB色号无效");
                     return;
                 }
                 ColPicker_PickStop();
@@ -467,7 +467,7 @@ namespace ImageToMidi
             }
             catch
             {
-                MessageBox.Show("Invalid hex RGB color");
+                MessageBox.Show("十六进制RGB色号无效");
                 return;
             }
             ColPicker_PickStop();

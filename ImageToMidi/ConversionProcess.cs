@@ -39,11 +39,10 @@ namespace ImageToMidi
         {
             Palette = palette;
             this.imageData = imageData;
-            int colors = palette.Colors.Count + 15;
-            int tracks = (colors - (colors % 16)) / 16;
             this.startKey = startKey;
             this.endKey = endKey;
             imageStride = imgStride;
+            int tracks = Palette.Colors.Count; // 修改为每个颜色一个轨道
             EventBuffers = new FastList<MIDIEvent>[tracks];
             for (int i = 0; i < tracks; i++)
                 EventBuffers[i] = new FastList<MIDIEvent>();
@@ -53,11 +52,10 @@ namespace ImageToMidi
         {
             Palette = palette;
             this.imageData = imageData;
-            int colors = palette.Colors.Count + 15;
-            int tracks = (colors - (colors % 16)) / 16;
             this.startKey = startKey;
             this.endKey = endKey;
             imageStride = imgStride;
+            int tracks = Palette.Colors.Count; // 修改为每个颜色一个轨道
             EventBuffers = new FastList<MIDIEvent>[tracks];
             for (int i = 0; i < tracks; i++)
                 EventBuffers[i] = new FastList<MIDIEvent>();
@@ -104,7 +102,10 @@ namespace ImageToMidi
             cancelled = true;
             try
             {
-                Image.Dispose();
+                if (Image != null)
+                {
+                    Image.Dispose();
+                }
             }
             catch { }
         }
@@ -113,8 +114,7 @@ namespace ImageToMidi
         {
             int width = endKey - startKey;
             int height = resizedImage.Length / 4 / width;
-            int tracks = (Palette.Colors.Count + 15 - ((Palette.Colors.Count + 15) % 16)) / 16;
-            long[] lastTimes = new long[tracks];
+            long[] lastTimes = new long[Palette.Colors.Count]; // 修改为每个颜色一个时间记录
             long[] lastOnTimes = new long[width];
             int[] colors = new int[width];
             long time = 0;
@@ -135,22 +135,17 @@ namespace ImageToMidi
                     }
                     if (newc != c || newNote)
                     {
-                        int track, channel;
                         if (c != -1 && c != -2)
                         {
-                            channel = c % 16;
-                            track = (c - channel) / 16;
-                            EventBuffers[track].Add(new NoteOffEvent((uint)(time - lastTimes[track]), (byte)channel, (byte)(j + startKey)));
-                            lastTimes[track] = time;
+                            EventBuffers[c].Add(new NoteOffEvent((uint)(time - lastTimes[c]), (byte)0, (byte)(j + startKey))); // 修改为直接使用颜色索引作为轨道索引
+                            lastTimes[c] = time;
                         }
                         colors[j] = newc;
                         c = newc;
                         if (c != -2)
                         {
-                            channel = c % 16;
-                            track = (c - channel) / 16;
-                            EventBuffers[track].Add(new NoteOnEvent((uint)(time - lastTimes[track]), (byte)channel, (byte)(j + startKey), 1));
-                            lastTimes[track] = time;
+                            EventBuffers[c].Add(new NoteOnEvent((uint)(time - lastTimes[c]), (byte)0, (byte)(j + startKey), 1)); // 修改为直接使用颜色索引作为轨道索引
+                            lastTimes[c] = time;
                             lastOnTimes[j] = time;
                         }
                     }
@@ -163,10 +158,8 @@ namespace ImageToMidi
                 int c = colors[j];
                 if (c != -1 && c != -2)
                 {
-                    int channel = c % 16;
-                    int track = (c - channel) / 16;
-                    EventBuffers[track].Add(new NoteOffEvent((uint)(time - lastTimes[track]), (byte)channel, (byte)(j + startKey)));
-                    lastTimes[track] = time;
+                    EventBuffers[c].Add(new NoteOffEvent((uint)(time - lastTimes[c]), (byte)0, (byte)(j + startKey))); // 修改为直接使用颜色索引作为轨道索引
+                    lastTimes[c] = time;
                 }
             }
             if (cancelled) return;
@@ -184,12 +177,12 @@ namespace ImageToMidi
                 {
                     foreach (Note n in new ExtractNotes(EventBuffers[i]))
                     {
-                        var c = Palette.Colors[i * 16 + n.Channel];
+                        var c = Palette.Colors[i]; // 直接使用轨道索引i来获取颜色
                         System.Drawing.Color _c;
                         if (RandomColors)
                         {
                             int r, g, b;
-                            Random rand = new Random(i * 16 + n.Channel + RandomColorSeed * 256);
+                            Random rand = new Random(i + RandomColorSeed * 256);
                             HsvToRgb(rand.NextDouble() * 360, 1, 0.5, out r, out g, out b);
                             _c = System.Drawing.Color.FromArgb(255, r, g, b);
                         }
@@ -210,28 +203,21 @@ namespace ImageToMidi
 
         public void WriteMidi(string filename, int ticksPerPixel, int ppq, int startOffset, bool useColorEvents)
         {
-            int tracks = (Palette.Colors.Count + 15 - ((Palette.Colors.Count + 15) % 16)) / 16;
+            int tracks = Palette.Colors.Count; // 修改为每个颜色一个轨道
             MidiWriter writer = new MidiWriter(new BufferedStream(File.Open(filename, FileMode.Create)));
             writer.Init();
             writer.WriteFormat(1);
             writer.WritePPQ((ushort)ppq);
             writer.WriteNtrks((ushort)tracks);
 
-            //writer.InitTrack();
-            //writer.Write(new TimeSignatureEvent(0, 4, 2, 24, 8));
-            //writer.Write(new TempoEvent(0, 500000));
-            //writer.EndTrack();
-
             for (int i = 0; i < tracks; i++)
             {
                 writer.InitTrack();
                 if (useColorEvents)
-                    for (byte j = 0; j < 16; j++)
-                        if (i * 16 + j < Palette.Colors.Count)
-                        {
-                            var c = Palette.Colors[i * 16 + j];
-                            writer.Write(new ColorEvent(0, j, c.R, c.G, c.B, c.A));
-                        }
+                {
+                    var c = Palette.Colors[i];
+                    writer.Write(new ColorEvent(0, 0, c.R, c.G, c.B, c.A)); // 每个轨道只写入对应颜色的事件
+                }
 
                 uint o = (uint)startOffset;
                 foreach (MIDIEvent e in EventBuffers[i])
