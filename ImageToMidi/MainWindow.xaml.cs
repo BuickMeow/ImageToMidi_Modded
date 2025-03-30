@@ -2,8 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,7 +43,19 @@ namespace ImageToMidi
 
         ConversionProcess convert = null;
 
+
         bool colorPick = false;
+
+        public enum HeightModeEnum
+        {
+            SameAsWidth,
+            OriginalHeight,
+            CustomHeight,
+            OriginalAspectRatio // 新增的枚举值
+        }
+
+        private HeightModeEnum heightMode = HeightModeEnum.SameAsWidth;
+        private int customHeight = 0;
 
         void MakeFadeInOut(DependencyObject e)
         {
@@ -100,6 +114,8 @@ namespace ImageToMidi
             colPicker.PickStart += ColPicker_PickStart;
             colPicker.PickStop += ColPicker_PickStop;
             colPicker.PaletteChanged += ReloadPreview;
+
+            UpdateHeightForSameAsWidth();
         }
 
         private void ExitButton_Click(object sender, RoutedEventArgs e)
@@ -149,7 +165,7 @@ namespace ImageToMidi
 
         private void BrowseImage_Click(object sender, RoutedEventArgs e)
         {
-            colPicker.CancelPick(); 
+            colPicker.CancelPick();
             OpenFileDialog open = new OpenFileDialog();
             open.Filter = "图片 (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp";
             if (!(bool)open.ShowDialog()) return;
@@ -169,7 +185,31 @@ namespace ImageToMidi
             openedImageSrc = src;
             ReloadAutoPalette();
             ((Storyboard)openedImage.GetValue(FadeInStoryboard)).Begin();
+
+            // 更新自定义高度NumberSelect显示的数据
+            UpdateCustomHeightNumberSelect();
         }
+
+        private void UpdateCustomHeightNumberSelect()
+        {
+            switch (heightMode)
+            {
+                case HeightModeEnum.SameAsWidth:
+                    CustomHeightNumberSelect.Value = (int)lastKeyNumber.Value - (int)firstKeyNumber.Value + 1;
+                    break;
+                case HeightModeEnum.OriginalHeight:
+                    CustomHeightNumberSelect.Value = openedImageHeight;
+                    break;
+                case HeightModeEnum.CustomHeight:
+                    CustomHeightNumberSelect.Value = customHeight;
+                    break;
+                case HeightModeEnum.OriginalAspectRatio:
+                    double aspectRatio = (double)openedImageHeight / openedImageWidth;
+                    CustomHeightNumberSelect.Value = (int)((double)(lastKeyNumber.Value - firstKeyNumber.Value + 1) * aspectRatio);
+                    break;
+            }
+        }
+
 
         private void MinimiseButton_Click(object sender, RoutedEventArgs e)
         {
@@ -265,25 +305,77 @@ namespace ImageToMidi
             }
         }
 
-        void ReloadPreview()
+        private void ReloadPreview()
         {
             if (!IsInitialized) return;
             if (openedImagePixels == null) return;
             if (convert != null) convert.Cancel();
+
             var palette = chosenPalette;
             if (leftSelected) palette = colPicker.GetPalette();
+
+            // 获取目标高度
+            int targetHeight = GetTargetHeight();
+
+            // 根据用户选择的高度模式和输入的自定义高度值初始化 ConversionProcess 对象
             if ((bool)useNoteLength.IsChecked)
-                convert = new ConversionProcess(palette, openedImagePixels, openedImageWidth * 4, (int)firstKeyNumber.Value, (int)lastKeyNumber.Value + 1, (bool)startOfImage.IsChecked, (int)noteSplitLength.Value);
+            {
+                convert = new ConversionProcess(
+                    palette,
+                    openedImagePixels,
+                    openedImageWidth * 4,
+                    (int)firstKeyNumber.Value,
+                    (int)lastKeyNumber.Value + 1,
+                    (bool)startOfImage.IsChecked,
+                    (int)noteSplitLength.Value,
+                    (ConversionProcess.HeightModeEnum)heightMode, // Fix: Cast to ConversionProcess.HeightModeEnum
+                    targetHeight
+                );
+            }
             else
-                convert = new ConversionProcess(palette, openedImagePixels, openedImageWidth * 4, (int)firstKeyNumber.Value, (int)lastKeyNumber.Value + 1);
+            {
+                convert = new ConversionProcess(
+                    palette,
+                    openedImagePixels,
+                    openedImageWidth * 4,
+                    (int)firstKeyNumber.Value,
+                    (int)lastKeyNumber.Value + 1,
+                    (ConversionProcess.HeightModeEnum)heightMode, // Fix: Cast to ConversionProcess.HeightModeEnum
+                    targetHeight
+                );
+            }
+
             if (!(bool)genColorEventsCheck.IsChecked)
             {
                 convert.RandomColors = true;
                 convert.RandomColorSeed = (int)randomColorSeed.Value;
             }
-            convert.RunProcessAsync(ShowPreview);
+
+            convert.RunProcessAsync(() =>
+            {
+                ShowPreview();
+            });
             genImage.Source = null;
             saveMidi.IsEnabled = false;
+        }
+
+        private int GetTargetHeight()
+        {
+            switch (heightMode)
+            {
+                case HeightModeEnum.SameAsWidth:
+                    return (int)lastKeyNumber.Value - (int)firstKeyNumber.Value + 1;
+                case HeightModeEnum.OriginalHeight:
+                    return openedImageHeight;
+                case HeightModeEnum.CustomHeight:
+                    return customHeight;
+                case HeightModeEnum.OriginalAspectRatio:
+                    // 计算保持原图比例的高度
+                    double aspectRatio = (double)openedImageHeight / openedImageWidth;
+                    return (int)((double)(lastKeyNumber.Value - firstKeyNumber.Value + 1) * aspectRatio);
+                default:
+                    return openedImageHeight; // 默认使用原图高度
+            }
         }
 
         BitmapImage BitmapToImageSource(System.Drawing.Bitmap bitmap)
@@ -319,6 +411,9 @@ namespace ImageToMidi
                         genImage.Source = bmp;
                         saveMidi.IsEnabled = true;
                         ((Storyboard)genImage.GetValue(FadeInStoryboard)).Begin();
+
+                        // 更新导出 MIDI 按钮的文本
+                        saveMidi.Content = $"导出 MIDI（音符数 {convert.NoteCount}）";
                     }
                 });
             }
@@ -344,6 +439,7 @@ namespace ImageToMidi
                 MessageBox.Show(ex.ToString(), "Image To MIDI被玩坏了！<LineBreak/>这肯定不是节能酱的问题！<LineBreak/>绝对不是！");
             }
         }
+
 
         private void NoteSplitLength_ValueChanged(object sender, RoutedPropertyChangedEventArgs<decimal> e)
         {
@@ -376,8 +472,9 @@ namespace ImageToMidi
             chosenPalette =
                 Clusterisation.Clusterise(
                     chosenPalette,
-                    ResizeImage.MakeResizedImage(openedImagePixels, openedImageWidth * 4, 128),
-                    10);
+                    ResizeImage.MakeResizedImage(openedImagePixels, openedImageWidth * 4, 128, openedImageHeight),
+                    10
+                );
             ReloadPalettePreview();
             ReloadPreview();
         }
@@ -388,15 +485,31 @@ namespace ImageToMidi
                 colPicker.SendColor(c);
         }
 
+        // 新增方法：更新“宽高相等”模式下的高度数值
+        private void UpdateHeightForSameAsWidth()
+        {
+            if (heightMode == HeightModeEnum.SameAsWidth)
+            {
+                CustomHeightNumberSelect.Value = (int)lastKeyNumber.Value - (int)firstKeyNumber.Value + 1;
+            }
+            else if (heightMode == HeightModeEnum.OriginalAspectRatio)
+            {
+                double aspectRatio = (double)openedImageHeight / openedImageWidth;
+                CustomHeightNumberSelect.Value = (int)((double)(lastKeyNumber.Value - firstKeyNumber.Value + 1) * aspectRatio);
+            }
+        }
+
         private void FirstKeyNumber_ValueChanged(object sender, RoutedPropertyChangedEventArgs<decimal> e)
         {
             lastKeyNumber.Minimum = firstKeyNumber.Value + 1;
+            UpdateHeightForSameAsWidth(); // 调用更新高度方法
             ReloadPreview();
         }
 
         private void LastKeyNumber_ValueChanged(object sender, RoutedPropertyChangedEventArgs<decimal> e)
         {
             firstKeyNumber.Maximum = lastKeyNumber.Value - 1;
+            UpdateHeightForSameAsWidth(); // 调用更新高度方法
             ReloadPreview();
         }
 
@@ -447,10 +560,12 @@ namespace ImageToMidi
                 try
                 {
                     c = ParseHex(colHex.Text, true);
+                    errorTextBlock.Visibility = Visibility.Collapsed; // 隐藏错误信息
                 }
                 catch
                 {
-                    MessageBox.Show("十六进制RGB色号无效");
+                    errorTextBlock.Text = "色号无效";
+                    errorTextBlock.Visibility = Visibility.Visible; // 显示错误信息
                     return;
                 }
                 ColPicker_PickStop();
@@ -464,14 +579,60 @@ namespace ImageToMidi
             try
             {
                 c = ParseHex(colHex.Text, true);
+                errorTextBlock.Visibility = Visibility.Collapsed; // 隐藏错误信息
             }
             catch
             {
-                MessageBox.Show("十六进制RGB色号无效");
+                errorTextBlock.Text = "色号无效";
+                errorTextBlock.Visibility = Visibility.Visible; // 显示错误信息
                 return;
             }
             ColPicker_PickStop();
             colPicker.SendColor(c);
+        }
+
+        private void CustomHeightNumberSelect_ValueChanged(object sender, RoutedPropertyChangedEventArgs<decimal> e)
+        {
+            if (heightMode == HeightModeEnum.CustomHeight)
+            {
+                customHeight = (int)CustomHeightNumberSelect.Value; // 更新自定义高度
+                ReloadPreview(); // 刷新图像
+            }
+        }
+        private void HeightModeButton_Click(object sender, RoutedEventArgs e)
+        {
+            CustomHeightNumberSelect.IsEnabled = !CustomHeightNumberSelect.IsEnabled;
+            // 轮换高度模式
+            if (heightMode == HeightModeEnum.SameAsWidth)
+            {
+                heightMode = HeightModeEnum.OriginalHeight;
+                HeightModeButton.Content = "原图高度";
+                CustomHeightNumberSelect.IsEnabled = false;
+                CustomHeightNumberSelect.Value = openedImageHeight; // 显示原图的真实高度
+            }
+            else if (heightMode == HeightModeEnum.OriginalHeight)
+            {
+                heightMode = HeightModeEnum.CustomHeight;
+                HeightModeButton.Content = "自定高度";
+                CustomHeightNumberSelect.IsEnabled = true;
+                customHeight = (int)CustomHeightNumberSelect.Value; // 设置自定义高度
+            }
+            else if (heightMode == HeightModeEnum.CustomHeight)
+            {
+                heightMode = HeightModeEnum.OriginalAspectRatio;
+                HeightModeButton.Content = "原图比例";
+                CustomHeightNumberSelect.IsEnabled = false;
+                int targetHeight = GetTargetHeight();
+                CustomHeightNumberSelect.Value = targetHeight; // 显示原图比例计算后的高度
+            }
+            else if (heightMode == HeightModeEnum.OriginalAspectRatio)
+            {
+                heightMode = HeightModeEnum.SameAsWidth;
+                HeightModeButton.Content = "宽高相等";
+                CustomHeightNumberSelect.IsEnabled = false;
+                CustomHeightNumberSelect.Value = (int)lastKeyNumber.Value - (int)firstKeyNumber.Value + 1; // 音符宽度
+            }
+            ReloadPreview(); // 刷新图像
         }
     }
 }

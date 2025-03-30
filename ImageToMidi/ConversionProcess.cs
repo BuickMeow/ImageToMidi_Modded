@@ -31,48 +31,109 @@ namespace ImageToMidi
 
         byte[] resizedImage;
 
+        public int NoteCount { get; private set; }
+
         public Bitmap Image { get; private set; }
 
         FastList<MIDIEvent>[] EventBuffers;
 
-        public ConversionProcess(BitmapPalette palette, byte[] imageData, int imgStride, int startKey, int endKey)
+        public enum HeightModeEnum
         {
-            Palette = palette;
-            this.imageData = imageData;
-            this.startKey = startKey;
-            this.endKey = endKey;
-            imageStride = imgStride;
-            int tracks = Palette.Colors.Count; // 修改为每个颜色一个轨道
-            EventBuffers = new FastList<MIDIEvent>[tracks];
-            for (int i = 0; i < tracks; i++)
-                EventBuffers[i] = new FastList<MIDIEvent>();
+            SameAsWidth,
+            OriginalHeight,
+            CustomHeight,
+            OriginalAspectRatio // 新增的枚举值
         }
 
-        public ConversionProcess(BitmapPalette palette, byte[] imageData, int imgStride, int startKey, int endKey, bool measureFromStart, int maxNoteLength)
+        public HeightModeEnum HeightMode { get; private set; }
+        public int CustomHeight { get; private set; }
+
+        public ConversionProcess(BitmapPalette palette, byte[] imageData, int imgStride, int startKey, int endKey, HeightModeEnum heightMode = HeightModeEnum.SameAsWidth, int customHeight = 0)
         {
             Palette = palette;
             this.imageData = imageData;
             this.startKey = startKey;
             this.endKey = endKey;
             imageStride = imgStride;
-            int tracks = Palette.Colors.Count; // 修改为每个颜色一个轨道
+            this.HeightMode = heightMode;
+            this.CustomHeight = customHeight;
+            int tracks = Palette.Colors.Count; // 每个颜色一个轨道
             EventBuffers = new FastList<MIDIEvent>[tracks];
             for (int i = 0; i < tracks; i++)
                 EventBuffers[i] = new FastList<MIDIEvent>();
-            useMaxNoteLength = true;
+
+            // 更新高度
+            //UpdateHeight();
+        }
+
+        public ConversionProcess(BitmapPalette palette, byte[] imageData, int imgStride, int startKey, int endKey, bool measureFromStart, int maxNoteLength, HeightModeEnum heightMode = HeightModeEnum.SameAsWidth, int customHeight = 0)
+        {
+            Palette = palette;
+            this.imageData = imageData;
+            this.startKey = startKey;
+            this.endKey = endKey;
+            imageStride = imgStride;
+            this.HeightMode = heightMode;
+            this.CustomHeight = customHeight;
             this.measureFromStart = measureFromStart;
             this.maxNoteLength = maxNoteLength;
+            this.useMaxNoteLength = maxNoteLength > 0;
+            int tracks = Palette.Colors.Count; // 每个颜色一个轨道
+            EventBuffers = new FastList<MIDIEvent>[tracks];
+            for (int i = 0; i < tracks; i++)
+                EventBuffers[i] = new FastList<MIDIEvent>();
+
+            // 更新高度
+            //UpdateHeight();
         }
+
+        /*private void UpdateHeight()
+        {
+            if (HeightMode == HeightModeEnum.SameAsWidth)
+            {
+                CustomHeight = endKey - startKey;
+            }
+        }*/
 
         public Task RunProcessAsync(Action callback)
         {
             return Task.Run(() =>
             {
-                resizedImage = ResizeImage.MakeResizedImage(imageData, imageStride, endKey - startKey);
+                int targetWidth = endKey - startKey;
+                int targetHeight = GetTargetHeight();
+
+                if (HeightMode == HeightModeEnum.SameAsWidth)
+                {
+                    resizedImage = ResizeImage.MakeResizedImage(imageData, imageStride, targetWidth, targetHeight);
+                }
+                else
+                {
+                    resizedImage = ResizeImage.MakeResizedImage(imageData, imageStride, targetWidth, targetHeight);
+                }
+
                 RunProcess();
                 Image = GenerateImage();
                 if (!cancelled) callback();
             });
+        }
+
+        private int GetTargetHeight()
+        {
+            switch (HeightMode)
+            {
+                case HeightModeEnum.SameAsWidth:
+                    return endKey - startKey;
+                case HeightModeEnum.OriginalHeight:
+                    return imageData.Length / imageStride;
+                case HeightModeEnum.CustomHeight:
+                    return CustomHeight;
+                case HeightModeEnum.OriginalAspectRatio:
+                    // 计算保持原图比例的高度
+                    double aspectRatio = (double)(imageData.Length / imageStride) / (imageStride / 4);
+                    return (int)((endKey - startKey) * aspectRatio);
+                default:
+                    throw new InvalidOperationException("Invalid height mode.");
+            }
         }
 
         int GetColorID(int r, int g, int b)
@@ -171,12 +232,14 @@ namespace ImageToMidi
             int height = resizedImage.Length / 4 / width;
             int scale = 5;
             Bitmap img = new Bitmap(width * scale + 1, height * scale + 1, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            NoteCount = 0; // 初始化 NoteCount
             using (Graphics dg = Graphics.FromImage(img))
             {
                 for (int i = 0; i < EventBuffers.Length; i++)
                 {
                     foreach (Note n in new ExtractNotes(EventBuffers[i]))
                     {
+                        NoteCount++; // 每次绘制音符时增加计数
                         var c = Palette.Colors[i]; // 直接使用轨道索引i来获取颜色
                         System.Drawing.Color _c;
                         if (RandomColors)
@@ -232,7 +295,6 @@ namespace ImageToMidi
             }
             writer.Close();
         }
-
 
         void HsvToRgb(double h, double S, double V, out int r, out int g, out int b)
         {
@@ -302,7 +364,7 @@ namespace ImageToMidi
                         break;
 
                     default:
-                        R = G = B = V; 
+                        R = G = B = V;
                         break;
                 }
             }
