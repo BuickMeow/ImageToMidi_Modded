@@ -1,19 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace ImageToMidi
 {
@@ -22,6 +13,7 @@ namespace ImageToMidi
     /// </summary>
 
     public delegate void ColorClickedEventHandler(object sender, Color clicked);
+
 
     public class RoutedColorClickedEventArgs : RoutedEventArgs
     {
@@ -40,19 +32,82 @@ namespace ImageToMidi
 
     public partial class ZoomableImage : UserControl
     {
+        public int ImageRotation
+        {
+            get { return (int)GetValue(ImageRotationProperty); }
+            set { SetValue(ImageRotationProperty, value); }
+        }
+        public static readonly DependencyProperty ImageRotationProperty =
+            DependencyProperty.Register("ImageRotation", typeof(int), typeof(ZoomableImage), new PropertyMetadata(0, OnTransformChanged));
+
+        public bool ImageFlip
+        {
+            get { return (bool)GetValue(ImageFlipProperty); }
+            set { SetValue(ImageFlipProperty, value); }
+        }
+        public static readonly DependencyProperty ImageFlipProperty =
+            DependencyProperty.Register("ImageFlip", typeof(bool), typeof(ZoomableImage), new PropertyMetadata(false, OnTransformChanged));
+
+        private static void OnTransformChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            ((ZoomableImage)d).ApplyImageTransform();
+        }
+
+        // 修改 ApplyImageTransform 方法
+        private void ApplyImageTransform()
+        {
+            var group = new TransformGroup();
+
+            // 水平翻转
+            if (ImageFlip)
+            {
+                group.Children.Add(new ScaleTransform(-1, 1, imageBorder.ActualWidth / 2, imageBorder.ActualHeight / 2));
+            }
+
+            // 旋转
+            if (ImageRotation != 0)
+            {
+                group.Children.Add(new RotateTransform(ImageRotation, imageBorder.ActualWidth / 2, imageBorder.ActualHeight / 2));
+            }
+
+            imageBorder.RenderTransform = group;
+        }
         public BitmapSource Source
         {
             get { return (BitmapSource)GetValue(SourceProperty); }
             set
             {
                 SetValue(SourceProperty, value);
-                //smoothZoom.From = Zoom;
-                //smoothZoom.To = targetZoom;
-                //smoothZoomStoryboard.Begin();
-                //targetZoom = 1;
-                //Offset = new Point(0, 0);
                 shownImage.Source = value;
                 RefreshView();
+
+                if (value != null)
+                {
+                    // 先在UI线程获取必要信息
+                    int width = 0, height = 0, stride = 0;
+                    byte[] pixels = null;
+                    Dispatcher.Invoke(() =>
+                    {
+                        width = value.PixelWidth;
+                        height = value.PixelHeight;
+                        stride = width * 4;
+                        pixels = new byte[height * stride];
+                        value.CopyPixels(pixels, stride, 0);
+                    });
+
+                    // 再在UI线程更新缓存
+                    cachedWidth = width;
+                    cachedHeight = height;
+                    cachedStride = stride;
+                    cachedPixels = pixels;
+                }
+                else
+                {
+                    cachedPixels = null;
+                    cachedStride = 0;
+                    cachedWidth = 0;
+                    cachedHeight = 0;
+                }
             }
         }
 
@@ -105,7 +160,7 @@ namespace ImageToMidi
 
         public static readonly RoutedEvent ColorClickedEvent = EventManager.RegisterRoutedEvent(
             "Clicked", RoutingStrategy.Bubble,
-            typeof(ColorClickedEventHandler), typeof(ZoomableImage));
+            typeof(ColorClickedEventHandler), typeof(NumberSelect));
 
         public event ColorClickedEventHandler ColorClicked
         {
@@ -140,7 +195,13 @@ namespace ImageToMidi
             ((ZoomableImage)sender).RefreshView();
         }
 
-        void RefreshView()
+        //节能酱写的缓存字段 用于加快吸色
+        private byte[] cachedPixels = null;
+        private int cachedStride = 0;
+        private int cachedWidth = 0;
+        private int cachedHeight = 0;
+
+        private void RefreshView()
         {
             if (Source == null) return;
             double aspect = Source.Width / Source.Height;
@@ -158,19 +219,28 @@ namespace ImageToMidi
             }
             var zoom = Zoom;
             if (zoom < 1) zoom = 1;
-            double leftMargin = 0;
-            double topMargin = 0;
-            leftMargin += width * Offset.X;
-            topMargin += height * Offset.Y;
-            leftMargin *= zoom;
-            topMargin *= zoom;
-            shownImage.Width = width * zoom;
-            shownImage.Height = height * zoom;
-            leftMargin -= width * zoom / 2;
-            topMargin -= height * zoom / 2;
-            leftMargin += container.ActualWidth / 2;
-            topMargin += container.ActualHeight / 2;
-            shownImage.Margin = new Thickness(leftMargin, topMargin, 0, 0);
+
+            imageBorder.Width = width;
+            imageBorder.Height = height;
+            shownImage.Width = width;
+            shownImage.Height = height;
+
+            // 偏移量（Offset）转为像素
+            double offsetX = Offset.X * width * zoom;
+            double offsetY = Offset.Y * height * zoom;
+
+            // 组合变换：缩放、平移、旋转/翻转
+            var group = new TransformGroup();
+            group.Children.Add(new ScaleTransform(zoom, zoom, width / 2, height / 2));
+            group.Children.Add(new TranslateTransform(offsetX, offsetY));
+
+            // 旋转和翻转
+            if (ImageFlip)
+                group.Children.Add(new ScaleTransform(-1, 1, width / 2, height / 2));
+            if (ImageRotation != 0)
+                group.Children.Add(new RotateTransform(ImageRotation, width / 2, height / 2));
+
+            imageBorder.RenderTransform = group;
         }
 
         void UpdateZoomOffset(double oldval, double newval)
@@ -250,18 +320,37 @@ namespace ImageToMidi
             if (mouseIsDown)
             {
                 Point currentMousePos = e.GetPosition(container);
-                Point mouseOffset = (Point)(currentMousePos - mouseMoveStart);
-                if (mouseOffset.X != 0 && mouseOffset.Y != 0)
+                Vector mouseOffset = currentMousePos - mouseMoveStart;
+
+                if (mouseOffset.X != 0 || mouseOffset.Y != 0)
                 {
+                    // 旋转角度修正拖动方向
+                    double angle = ImageRotation % 360;
+                    if (angle < 0) angle += 360;
+                    double radians = angle * Math.PI / 180.0;
+
+                    // 逆时针旋转鼠标偏移向量
+                    double cos = Math.Cos(-radians);
+                    double sin = Math.Sin(-radians);
+                    double dx = mouseOffset.X * cos - mouseOffset.Y * sin;
+                    double dy = mouseOffset.X * sin + mouseOffset.Y * cos;
+
                     container.Cursor = Cursors.ScrollAll;
                     mouseNotMoved = false;
-                    Offset = new Point(Offset.X + mouseOffset.X / shownImage.ActualWidth, Offset.Y + mouseOffset.Y / shownImage.ActualHeight);
+
+                    // 关键：拖动距离除以缩放比例
+                    double zoom = Zoom;
+                    if (zoom < 1) zoom = 1;
+
+                    Offset = new Point(
+                        Offset.X + dx / shownImage.ActualWidth / zoom,
+                        Offset.Y + dy / shownImage.ActualHeight / zoom
+                    );
                     ClampOffset();
 
                     mouseMoveStart = currentMousePos;
                     offsetStart = Offset;
 
-                    ClampOffset();
                     RefreshView();
                 }
             }
@@ -273,41 +362,34 @@ namespace ImageToMidi
             if (!mouseIsDown) return;
             if (mouseNotMoved)
             {
-                if (Source != null && ClickableColors)
+                if (ClickableColors)
                 {
-                    double aspect = Source.Width / Source.Height;
-                    double containerAspect = container.ActualWidth / container.ActualHeight;
-                    double width, height;
-                    if (aspect > containerAspect)
-                    {
-                        width = container.ActualWidth;
-                        height = container.ActualWidth / aspect;
-                    }
-                    else
-                    {
-                        width = container.ActualHeight * aspect;
-                        height = container.ActualHeight;
-                    }
-                    var pos = Mouse.GetPosition(container);
-                    pos = new Point(pos.X - (container.ActualWidth - width) / 2, pos.Y - (container.ActualHeight - height) / 2);
-                    pos = new Point(pos.X - width / 2, pos.Y - height / 2);
-                    pos = new Point(pos.X / width / Zoom - Offset.X, pos.Y / height / Zoom - Offset.Y);
+                    // 获取鼠标在container内的坐标
+                    var pos = e.GetPosition(container);
 
-                    pos = new Point((pos.X + 0.5) * (Source.PixelWidth - 1), (pos.Y + 0.5) * (Source.PixelHeight - 1));
-
-                    int x = (int)Math.Round(pos.X);
-                    int y = (int)Math.Round(pos.Y);
-                    if (x >= 0 && x < Source.PixelWidth &&
-                        y >= 0 && y < Source.PixelHeight)
+                    // 渲染container为位图
+                    int width = (int)container.ActualWidth;
+                    int height = (int)container.ActualHeight;
+                    if (width > 0 && height > 0)
                     {
-                        int stride = Source.PixelWidth * 4;
-                        int size = Source.PixelHeight * stride;
-                        var imagePixels = new byte[size];
-                        Source.CopyPixels(imagePixels, stride, 0);
-                        int pixel = y * stride + x * 4;
-                        if (imagePixels[pixel + 3] != 0)
+                        var rtb = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+                        rtb.Render(container);
+
+                        // 读取像素
+                        var pixels = new byte[width * height * 4];
+                        rtb.CopyPixels(pixels, width * 4, 0);
+
+                        int x = (int)pos.X;
+                        int y = (int)pos.Y;
+                        if (x >= 0 && x < width && y >= 0 && y < height)
                         {
-                            var c = Color.FromRgb(imagePixels[pixel + 2], imagePixels[pixel + 1], imagePixels[pixel + 0]);
+                            int pixel = (y * width + x) * 4;
+                            var c = Color.FromArgb(
+                                pixels[pixel + 3],
+                                pixels[pixel + 2],
+                                pixels[pixel + 1],
+                                pixels[pixel + 0]
+                            );
                             RaiseEvent(new RoutedColorClickedEventArgs(c, ColorClickedEvent));
                         }
                     }
@@ -323,6 +405,8 @@ namespace ImageToMidi
 
     class VelocityDrivenAnimation : DoubleAnimationBase
     {
+
+
         public double From
         {
             get { return (double)GetValue(FromProperty); }
@@ -363,10 +447,10 @@ namespace ImageToMidi
             return instance;
         }
 
-        double easeFunc(double x, double v) => 
+        double easeFunc(double x, double v) =>
             (-2 + 4 * x + v * (1 + 2 * x * (1 + x * (-5 - 2 * (x - 3) * x)))) /
             (4 + 8 * (x - 1) * x);
-        double easeVelFunc(double x, double v) => 
+        double easeVelFunc(double x, double v) =>
             -((x - 1) * (2 * x + v * (x - 1) * (-1 + 4 * x * (1 + (x - 1) * x)))) /
             Math.Pow(1 + 2 * (x - 1) * x, 2);
 
@@ -375,13 +459,13 @@ namespace ImageToMidi
             double s = From;
             double f = To;
             double dist = f - s;
-            if(dist ==0)
+            if (dist == 0)
             {
                 parent.velocity = 0;
                 return s;
             }
             double v = velocity / dist;
-            double x = (double)animationClock.CurrentProgress / 2 + 0.5;
+            double x = (double)animationClock.CurrentProgress;
 
             double ease = easeFunc(x, v) - easeFunc(0, v);
             double vel = easeVelFunc(x, v);

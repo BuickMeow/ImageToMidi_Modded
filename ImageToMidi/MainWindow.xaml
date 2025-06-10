@@ -13,7 +13,7 @@
         TextOptions.TextRenderingMode="Auto"        
         Background="{DynamicResource MaterialDesignPaper}"
         FontFamily="Misans, Microsoft YaHei"
-        Title="图片转MIDI工具v1.2——节能降耗汉化" Height="496" Width="1186" WindowStyle="None">
+        Title="Image To MIDI 魔改版v1.3.8" Height="496" Width="1186" WindowStyle="None">
     <Window.Resources>
         <BitmapImage x:Key="Icon" UriSource="i2m.png" />
         <Style TargetType="DockPanel" x:Key="CustomHeightDockPanelStyle">
@@ -47,12 +47,46 @@
                 <ColumnDefinition Width="3*"/>
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
-            <DockPanel LastChildFill="True" Margin="10">
-                <Button DockPanel.Dock="Top" x:Name="browseImage" Content="选择图片" materialDesign:RippleAssist.RippleSizeMultiplier="2" Margin="0,0,0,15" Click="BrowseImage_Click"/>
+            <DockPanel LastChildFill="True" Margin="7">
+                <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <!--ColumnDefinition Width="*"/-->
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="browseImage" Width="75" materialDesign:RippleAssist.RippleSizeMultiplier="2" Grid.Column="0" Click="BrowseImage_Click">
+                        <Button.Content>
+                            <materialDesign:PackIcon Kind="FolderOpen" Width="20" Height="20"/>
+                        </Button.Content>
+                    </Button>
+                    <Button x:Name="rotateLeftButton" Width="75" Grid.Column="1" Click="RotateLeftButton_Click">
+                        <Button.Content>
+                            <materialDesign:PackIcon Kind="RotateLeft" Width="20" Height="20"/>
+                        </Button.Content>
+                    </Button>
+                    <Button x:Name="rotateRightButton" Width="75" Grid.Column="2" Click="RotateRightButton_Click">
+                        <Button.Content>
+                            <materialDesign:PackIcon Kind="RotateRight" Width="20" Height="20"/>
+                        </Button.Content>
+                    </Button>
+                    <Button x:Name="flipHorizontalButton" Width="75" Grid.Column="3" Click="FlipHorizontalButton_Click">
+                        <Button.Content>
+                            <materialDesign:PackIcon Kind="FormatHorizontalAlignCenter" Width="20" Height="20"/>
+                        </Button.Content>
+                    </Button>
+                    <!--Button x:Name="flipVerticalButton" Width="75" Grid.Column="4">
+                        <Button.Content>
+                            <materialDesign:PackIcon Kind="FlipVertical" Width="20" Height="20"/>
+                        </Button.Content>
+                    </Button-->
+                </Grid>
                 <Grid Background="#37474F">
                     <!--<Image x:Name="openedImage" RenderOptions.BitmapScalingMode="NearestNeighbor" MouseDown="OpenedImage_MouseDown"/>-->
                     <local:ZoomableImage ClickableColors="True" ColorClicked="OpenedImage_ColorClicked" ScalingMode="NearestNeighbor" x:Name="openedImage"/>
                 </Grid>
+                <!--CheckBox DockPanel.Dock="Bottom" x:Name="grayScale" Content="灰度导入"/-->
             </DockPanel>
             <Grid Grid.Column="1" Margin="10">
                 <Grid Height="48" Margin="10,10,10,0" VerticalAlignment="Top">
@@ -112,9 +146,9 @@
 
                         </DockPanel>
                         <DockPanel LastChildFill="False">
-                            <RadioButton IsEnabled="{Binding IsChecked, ElementName=useNoteLength}" Name="startOfImage" DockPanel.Dock="Bottom" Content="切成小方格" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,5,0,0" Checked="StartOfImage_Checked"/>
-                            <RadioButton IsChecked="True" IsEnabled="{Binding IsChecked, ElementName=useNoteLength}" Name="startOfNotes" DockPanel.Dock="Bottom" Content="随颜色流动" HorizontalAlignment="Left" Grid.Row="1" VerticalAlignment="Top" Margin="5,0,0,0" Checked="StartOfNotes_Checked"/>
-                            <Label IsEnabled="{Binding IsChecked, ElementName=useNoteLength}" DockPanel.Dock="Bottom">过长音符的处理办法</Label>
+                            <!--RadioButton IsEnabled="{Binding IsChecked, ElementName=useNoteLength}" Name="startOfImage" DockPanel.Dock="Bottom" Content="切成小方格" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,5,0,0" Checked="StartOfImage_Checked"/-->
+                            <!--RadioButton IsChecked="True" IsEnabled="{Binding IsChecked, ElementName=useNoteLength}" Name="startOfNotes" DockPanel.Dock="Bottom" Content="随颜色流动" HorizontalAlignment="Left" Grid.Row="1" VerticalAlignment="Top" Margin="5,0,0,0" Checked="StartOfNotes_Checked"/-->
+                            <!--Label IsEnabled="{Binding IsChecked, ElementName=useNoteLength}" DockPanel.Dock="Bottom">过长音符的处理办法</Label-->
                             <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,0">
 
                                 <DockPanel>
@@ -126,12 +160,46 @@
                                         <local:NumberSelect ValueChanged="FirstKeyNumber_ValueChanged" x:Name="randomColorSeed" Margin="4,-1,0,1" Value="0" Minimum="0" Maximum="254" Width="70"></local:NumberSelect>
                                     </DockPanel>
                                 </DockPanel>
-                                <DockPanel DockPanel.Dock="Bottom" HorizontalAlignment="Left" VerticalAlignment="Top" Height="26">
+                                <!--DockPanel DockPanel.Dock="Bottom" HorizontalAlignment="Left" VerticalAlignment="Top" Height="26">
                                     <CheckBox Name="useNoteLength" Margin="0,0,0,0" Unchecked="UseNoteLength_Checked" Checked="UseNoteLength_Checked">
                                         <Label Margin="-5,-1,0,0">限制音符长度</Label>
                                     </CheckBox>
                                     <local:NumberSelect ValueChanged="NoteSplitLength_ValueChanged" x:Name="noteSplitLength" IsEnabled="{Binding IsChecked, ElementName=useNoteLength}" Width="80" Minimum="1" Value="5" Maximum="65535" Margin="5,0,0,0"></local:NumberSelect>
+                                </DockPanel-->
+                                
+                                <ComboBox x:Name="ResizeMethodComboBox" Width="130" Margin="-100,0,0,10" Foreground="White" SelectionChanged="ResizeMethodComboBox_SelectionChanged">
+                                    <ComboBoxItem Content="面积重采样" Tag="AreaResampling" IsSelected="True"
+                  ToolTip="基于像素面积的重采样，适合缩小图片，抗锯齿效果好。"/>
+                                    <ComboBoxItem Content="双线性插值" Tag="Bilinear"
+                  ToolTip="四邻域加权平均，平滑过渡，速度快。"/>
+                                    <ComboBoxItem Content="最近邻插值" Tag="NearestNeighbor"
+                  ToolTip="直接取最近像素，速度最快，但易产生锯齿。"/>
+                                    <ComboBoxItem Content="双三次插值" Tag="Bicubic"
+                  ToolTip="16邻域加权，效果更平滑，适合放大。"/>
+                                    <ComboBoxItem Content="Lanczos插值" Tag="Lanczos"
+                  ToolTip="高质量插值算法，适合高要求场景。"/>
+                                    <ComboBoxItem Content="高斯插值" Tag="Gaussian"
+                  ToolTip="使用高斯核平滑，适合降噪。"/>
+                                    <ComboBoxItem Content="Mitchell" Tag="Mitchell"
+                  ToolTip="Mitchell-Netravali滤波，平滑且锐利。"/>
+                                    <ComboBoxItem Content="箱体平均" Tag="BoxFilter"
+                  ToolTip="简单平均滤波，适合快速缩小。"/>
+                                    <ComboBoxItem Content="积分图像" Tag="IntegralImage"
+                  ToolTip="利用积分图像快速计算区域均值，适合大图像处理。"/>
+                                </ComboBox>
+                                <DockPanel DockPanel.Dock="Bottom" HorizontalAlignment="Left" VerticalAlignment="Top" Height="26">
+                                    <Button x:Name="NoteLengthModeButton" Content="不限制音符长度" Width="150" Margin="0,-35,5,-30" Click="NoteLengthModeButton_Click"/>
+                                    <local:NumberSelect ValueChanged="NoteSplitLength_ValueChanged"
+                        x:Name="noteSplitLength"
+                        Width="80"
+                        Minimum="1"
+                        Value="5"
+                        Maximum="65535"
+                        Margin="5,0,0,0"
+                        Visibility="Collapsed"/>
                                 </DockPanel>
+                                <!-- 在browseImage按钮下方添加 -->
+                                
                             </StackPanel>
                         </DockPanel>
                     </Grid>
@@ -140,21 +208,30 @@
             <DockPanel LastChildFill="True" Margin="10" Grid.Column="2">
                 <Button IsEnabled="False" ClipToBounds="True" Content="导出 MIDI" Padding="0" DockPanel.Dock="Bottom" x:Name="saveMidi" materialDesign:RippleAssist.RippleSizeMultiplier="2" Margin="0,15,0,0" Click="SaveMidi_Click"/>                
                 <Grid Margin="0,0,0,10" DockPanel.Dock="Top">
-                    <Grid.ColumnDefinitions>
+                    <!--Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="1*"/>
-                    </Grid.ColumnDefinitions>
+                    </Grid.ColumnDefinitions-->
                     <DockPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,0">
-                        <Label>最左侧琴键</Label>
-                        <local:NumberSelect ValueChanged="FirstKeyNumber_ValueChanged" x:Name="firstKeyNumber" Margin="5,0,0,0" Value="0" Minimum="0" Maximum="254" Width="70"></local:NumberSelect>
+                        <Label>范围</Label>
+                        <local:NumberSelect ValueChanged="FirstKeyNumber_ValueChanged" x:Name="firstKeyNumber" Margin="5,0,5,0" Value="0" Minimum="0" Maximum="255" Width="60"></local:NumberSelect>
+                        <local:NumberSelect ValueChanged="LastKeyNumber_ValueChanged" x:Name="lastKeyNumber" Margin="5,0,0,0" Value="127" Minimum="0" Maximum="255" Width="60"></local:NumberSelect>
+                        <Button x:Name="WhiteKeyModeButton" Content="128键" Width="120" Margin="10,-7,0,-7" Click="WhiteKeyModeButton_Click"/>
                     </DockPanel>
-                    <DockPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,0">
+                    <!--DockPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,0">
                         <Label>最右侧琴键</Label>
                         <local:NumberSelect ValueChanged="LastKeyNumber_ValueChanged" x:Name="lastKeyNumber" Margin="5,0,0,0" Value="127" Minimum="1" Maximum="255" Width="70"></local:NumberSelect>
-                    </DockPanel>
+                    </DockPanel-->
                 </Grid>
                 <Grid Background="#37474F">
                     <local:ZoomableImage x:Name="genImage"/>
+                    <TextBlock x:Name="previewTipTextBlock"
+                        Text="能不能别点这么快"
+                        Foreground="#FFFFFF"
+                        FontSize="20"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed"/>
                 </Grid>
             </DockPanel>
             <TabControl Name="tabSelect" Grid.Column="1" Background="Transparent" BorderBrush="Transparent" Margin="0,76,0,145" VerticalAlignment="Top">
@@ -177,15 +254,288 @@
                 <TabItem Opacity="0">
                     <Grid Margin="0,0,0,0">
                         <DockPanel DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,5,0,0" VerticalAlignment="Top" Height="26">
-                            <Label>颜色行数（每行16色）</Label>
-                            <local:NumberSelect x:Name="trackCount" ValueChanged="TrackCount_ValueChanged" Width="80" Minimum="1" Maximum="16" Value="1"></local:NumberSelect>
-                            <Button Name="clusterisePalette" Height="Auto" Padding="0,1.5,0,0" Width="90" Margin="10,0,0,0" Click="ClusterisePalette_Click">聚类化</Button>
-                            <Button Name="resetPalette" Height="Auto" Padding="0,1.5,0,0" Width="70" Margin="5,0,0,0" Click="ResetPalette_Click">重置</Button>
+                            <Label>颜色数（每行16色）</Label>
+                            <local:NumberSelect x:Name="trackCount" ValueChanged="TrackCount_ValueChanged" Width="80" Minimum="1" Maximum="256" Value="16"></local:NumberSelect>
+                            <StackPanel Orientation="Horizontal">
+                                <ComboBox x:Name="ClusterMethodComboBox" Width="130" Margin="10,-1,8,0" Foreground="White" SelectionChanged="ClusterMethodComboBox_SelectionChanged" PreviewMouseDown="ClusterMethodComboBox_PreviewMouseDown">
+                                    <ComboBoxItem Content="KMeans++ (默认)" Tag="OnlyKMeansPlusPlus" IsSelected="True"
+                                                  ToolTip="KMeans++聚类，改进初始点选择，聚类效果更稳定。"/>
+                                    <ComboBoxItem Content="WPF 中值切割 (原生)" Tag="OnlyWpf"
+                                                  ToolTip="WPF自带的中值切割算法，速度快，适合简单场景。"/>
+                                    <ComboBoxItem Content="WPF + K-Means" Tag="KMeans"
+                                                  ToolTip="[有随机性] 先用WPF中值切割，再用K-Means细化聚类，兼顾速度和效果。"/>
+                                    <ComboBoxItem Content="KM++ &amp; KM (推荐)" Tag="KMeansPlusPlus"
+                                                  ToolTip="[有随机性] KMeans++初始化+KMeans聚类，提升聚类质量。"/>
+                                    <ComboBoxItem Content="频率法" Tag="Popularity"
+                                                  ToolTip="按颜色出现频率选取主色，简单高效。"/>
+                                    <ComboBoxItem Content="八叉树" Tag="Octree"
+                                                  ToolTip="八叉树分割空间，适合颜色分布稀疏的图片。"/>
+                                    <ComboBoxItem Content="最大方差切割" Tag="VarianceSplit"
+                                                  ToolTip="按颜色方差最大方向切割，突出主色。"/>
+                                    <ComboBoxItem Content="PCA主成分 (适合少色)" Tag="Pca"
+                                                  ToolTip="主成分分析，提取颜色分布主方向。"/>
+                                    <ComboBoxItem Content="MinMax &amp; KM++" Tag="MaxMin"
+                                                  ToolTip="最大最小距离法结合KMeans++，提升聚类多样性。"/>
+                                    <ComboBoxItem Content="Arduano 原生KM" Tag="NativeKMeans"
+                                                  ToolTip="Arduano原生KMeans算法，原版ImageToMidi就是这个算法。"/>
+                                    <ComboBoxItem Content="MeanShift (适合少色)" Tag="MeanShift"
+                                                  ToolTip="均值漂移聚类，无需指定聚类数，适合复杂分布。"/>
+                                    <ComboBoxItem Content="DBSCAN (适合少色)" Tag="DBSCAN"
+                                                  ToolTip="基于密度的聚类，能发现任意形状的聚类。"/>
+                                    <ComboBoxItem Content="高斯混合" Tag="GMM"
+                                                  ToolTip="高斯混合模型，适合颜色分布为多高斯的图片。"/>
+                                    <ComboBoxItem Content="层次聚类" Tag="Hierarchical"
+                                                  ToolTip="自底向上合并聚类，形成层次结构。"/>
+                                    <ComboBoxItem Content="谱聚类" Tag="Spectral"
+                                                  ToolTip="基于图论的聚类方法，适合复杂结构。"/>
+                                    <ComboBoxItem Content="Lab KMeans" Tag="LabKMeans"
+                                                  ToolTip="在Lab颜色空间下的KMeans聚类，更符合人眼感知。"/>
+                                    <ComboBoxItem Content="Floyd–Steinberg抖动" Tag="FloydSteinbergDither"
+                                                  ToolTip="经典误差扩散抖动算法，提升色彩表现力。"/>
+                                    <ComboBoxItem Content="有序抖动" Tag="OrderedDither"
+                                                  ToolTip="使用Bayer矩阵的有序抖动，适合低色深显示。"/>
+                                    <ComboBoxItem Content="OPTICS (适合少色)" Tag="OPTICS"
+                                                  ToolTip="基于密度的聚类算法，能发现不同密度的聚类结构。"/>
+                                    <ComboBoxItem Content="固定调色板" Tag="FixedBitPalette"
+                                                  ToolTip="使用固定调色板，最高256色。"/>
+                                </ComboBox>
+                                <CheckBox x:Name="grayScaleCheckBox" Content="使用灰度图" Margin="0,0,0,0" Foreground="White"
+Checked="GrayScaleCheckBox_CheckedChanged"
+Unchecked="GrayScaleCheckBox_CheckedChanged"/>
+                                
+                                <!--Button x:Name="ClusterisePaletteButton" Content="聚类化" Click="ClusterisePalette_Click"/-->
+                            </StackPanel>
+                            <!--Button x:Name="ClusterisePaletteButton" Content="聚类化" Click="ClusterisePalette_Click" Margin="0 -4 0 -4"/-->
                         </DockPanel>
-                        <ScrollViewer Margin="0,40,0,0">
-                            <DockPanel Name="autoPaletteBox">
-                            </DockPanel>
-                        </ScrollViewer>
+                        <Grid Margin="0,40,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"/>
+                                <!-- 左侧参数栏宽度可调 -->
+                                <ColumnDefinition Width="*"/>
+                                <!-- 右侧色板自适应 -->
+                            </Grid.ColumnDefinitions>
+                            <!-- 左侧参数栏 -->
+                            <!-- 参数设置区 -->
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0" x:Name="ParamPanel">
+                                <ContentControl x:Name="AlgorithmParamContent"/>
+                                <StackPanel x:Name="EmptyParamPanel" Visibility="Visible" />
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <StackPanel x:Name="KMeansPlusPlusParamPanel" Visibility="Collapsed" Grid.Row="10">
+                                        <TextBlock Text="最大采样数 (maxSamples)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="KMeansPlusPlusMaxSamplesBox" Width="100" Margin="0,5,0,10" Value="20000" Minimum="1" Maximum="1000000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="用于聚类的最大像素采样数。整数。建议20000~50000。调低速度快但聚类不准，调高更准但更慢。"/>
+                                        <TextBlock Text="随机种子 (seed)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="KMeansPlusPlusSeedBox" Width="100" Margin="0,5,0,10" Value="0" Minimum="0" Maximum="999999" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="聚类初始化的随机种子。整数。0为自动随机，其他值可复现结果。"/>
+                                    </StackPanel>
+                                    <!-- KMeans -->
+                                    <StackPanel x:Name="KMeansParamPanel" Visibility="Collapsed" Grid.Row="0">
+                                        <TextBlock Text="最大迭代次数 (maxIterations)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="KMeansMaxIterationsBox" Width="100" Margin="0,5,0,10" Value="100" Minimum="1" Maximum="10000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="KMeans最大迭代次数。整数。建议50~200。调低可能聚类不收敛，调高速度变慢但更精确。"/>
+                                        <TextBlock Text="收敛阈值 (threshold)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="KMeansThresholdBox" Width="100" Margin="0,5,0,10" Value="1.0" Minimum="0" Maximum="1000" ValueChanged="AlgorithmParamBox_ValueChanged" DecimalPoints="3"
+                                            ToolTip="聚类收敛判定的阈值。小数。建议0.1~5。调低更精确但慢，调高更快但可能不够精细。"/>
+                                    </StackPanel>
+                                    <!-- Octree -->
+                                    <StackPanel x:Name="OctreeParamPanel" Visibility="Collapsed" Grid.Row="1">
+                                        <TextBlock Text="最大层级 (maxLevel)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="OctreeMaxLevelBox" Width="100" Margin="0,5,0,10" Value="8" Minimum="1" Maximum="8" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="八叉树的最大层级。整数。建议6~8。调低速度快但色彩分辨率低，调高更细腻但慢。"/>
+                                        <TextBlock Text="最大采样数 (maxSamples)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="OctreeMaxSamplesBox" Width="100" Margin="0,5,0,10" Value="20000" Minimum="1" Maximum="1000000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="用于八叉树的最大采样像素数。整数。建议20000。调低快但不准，调高慢但准。"/>
+                                    </StackPanel>
+                                    <!-- VarianceSplit -->
+                                    <StackPanel x:Name="VarianceSplitParamPanel" Visibility="Collapsed" Grid.Row="2">
+                                        <TextBlock Text="最大采样数 (maxSamples)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="VarianceSplitMaxSamplesBox" Width="100" Margin="0,5,0,10" Value="20000" Minimum="1" Maximum="1000000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="用于聚类的最大像素采样数。整数。建议20000。调低速度快但聚类不准，调高更准但更慢。"/>
+                                    </StackPanel>
+                                    <!-- PCA -->
+                                    <StackPanel x:Name="PcaParamPanel" Visibility="Collapsed" Grid.Row="3">
+                                        <TextBlock Text="幂迭代次数 (power iterations)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="PcaPowerIterationsBox" Width="100" Margin="0,5,0,10" Value="20" Minimum="1" Maximum="1000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="PCA主成分分析的幂迭代次数。整数。建议10~30。调低速度快但主成分不准，调高更准但更慢。"/>
+                                        <TextBlock Text="最大采样数 (maxSamples)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="PcaMaxSamplesBox" Width="100" Margin="0,5,0,10" Value="20000" Minimum="1" Maximum="1000000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="用于PCA的最大像素采样数。整数。建议20000。调低快但不准，调高慢但准。"/>
+                                    </StackPanel>
+                                    <!-- WeightedMaxMin -->
+                                    <StackPanel x:Name="WeightedMaxMinParamPanel" Visibility="Collapsed" Grid.Row="4">
+                                        <TextBlock Text="KMeans迭代次数 (kmeansIters)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="WeightedMaxMinItersBox" Width="100" Margin="0,5,0,10" Value="3" Minimum="1" Maximum="1000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="KMeans聚类的迭代次数。整数。建议3~10。调低速度快但聚类不准，调高更准但更慢。"/>
+                                        <TextBlock Text="最大采样数 (maxSamples)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="WeightedMaxMinMaxSamplesBox" Width="100" Margin="0,5,0,10" Value="20000" Minimum="1" Maximum="1000000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="用于聚类的最大像素采样数。整数。建议20000。调低快但不准，调高慢但准。"/>
+                                    </StackPanel>
+                                    <!-- NativeKMeans -->
+                                    <StackPanel x:Name="NativeKMeansParamPanel" Visibility="Collapsed" Grid.Row="5">
+                                        <TextBlock Text="迭代次数 (iterations)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="NativeKMeansIterationsBox" Width="100" Margin="0,5,0,10" Value="10" Minimum="1" Maximum="1000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="KMeans聚类的迭代次数。整数。建议5~20。调低速度快但聚类不准，调高更准但更慢。"/>
+                                        <TextBlock Text="收敛速率 (rate)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="NativeKMeansRateBox" Width="100" Margin="0,5,0,10" Value="0.3" Minimum="0" Maximum="1" ValueChanged="AlgorithmParamBox_ValueChanged" DecimalPoints="3"
+                                            ToolTip="KMeans聚类的收敛速率。小数。建议0.1~0.5。调低收敛慢但更稳定，调高收敛快但可能不稳定。"/>
+                                    </StackPanel>
+                                    <!-- MeanShift -->
+                                    <StackPanel x:Name="MeanShiftParamPanel" Visibility="Collapsed" Grid.Row="6">
+                                        <TextBlock Text="带宽 (bandwidth)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="MeanShiftBandwidthBox" Width="100" Margin="0,5,0,10" Value="32" Minimum="1" Maximum="255" ValueChanged="AlgorithmParamBox_ValueChanged" DecimalPoints="3"
+                                            ToolTip="均值漂移的带宽参数。小数。建议16~64。调低聚类更细致，调高更粗糙。"/>
+                                        <TextBlock Text="最大迭代次数 (maxIter)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="MeanShiftMaxIterBox" Width="100" Margin="0,5,0,10" Value="7" Minimum="1" Maximum="1000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="均值漂移最大迭代次数。整数。建议5~20。调低可能不收敛，调高更慢但更准。"/>
+                                        <TextBlock Text="最大采样数 (maxSamples)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="MeanShiftMaxSamplesBox" Width="100" Margin="0,5,0,10" Value="10000" Minimum="1" Maximum="1000000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="用于聚类的最大采样像素数。整数。建议10000。调低快但不准，调高慢但准。"/>
+                                    </StackPanel>
+                                    <!-- DBSCAN -->
+                                    <StackPanel x:Name="DBSCANParamPanel" Visibility="Collapsed" Grid.Row="7">
+                                        <TextBlock Text="邻域半径 (epsilon)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="DBSCANEpsilonBox" Width="100" Margin="0,5,0,10" Value="1" Minimum="0" Maximum="255" ValueChanged="AlgorithmParamBox_ValueChanged" DecimalPoints="3"
+                                            ToolTip="DBSCAN聚类的邻域半径。小数。建议1~10。调低聚类更细致，调高更粗糙。"/>
+                                        <TextBlock Text="最小点数 (minPts)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="DBSCANMinPtsBox" Width="100" Margin="0,5,0,10" Value="4" Minimum="1" Maximum="1000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="DBSCAN聚类的最小点数。整数。建议3~10。调低更易分出小簇，调高更难分簇。"/>
+                                        <TextBlock Text="最大采样数 (maxSamples)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="DBSCANMaxSamplesBox" Width="100" Margin="0,5,0,10" Value="2000" Minimum="1" Maximum="1000000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="用于聚类的最大像素采样数。整数。建议2000。调低快但不准，调高慢但准。"/>
+                                    </StackPanel>
+                                    <!-- GMM -->
+                                    <StackPanel x:Name="GMMParamPanel" Visibility="Collapsed" Grid.Row="8">
+                                        <TextBlock Text="最大迭代次数 (maxIter)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="GMMMaxIterBox" Width="100" Margin="0,5,0,10" Value="30" Minimum="1" Maximum="1000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="高斯混合模型最大迭代次数。整数。建议10~50。调低速度快但可能不收敛，调高更准但更慢。"/>
+                                        <TextBlock Text="收敛阈值 (tol)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="GMMTolBox" Width="100" Margin="0,5,0,10" Value="1.0" Minimum="0" Maximum="1000" ValueChanged="AlgorithmParamBox_ValueChanged" DecimalPoints="3"
+                                            ToolTip="高斯混合模型的收敛阈值。小数。建议0.1~5。调低更精确但慢，调高更快但可能不够精细。"/>
+                                        <TextBlock Text="最大采样数 (maxSamples)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="GMMMaxSamplesBox" Width="100" Margin="0,5,0,10" Value="2000" Minimum="1" Maximum="1000000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="用于聚类的最大像素采样数。整数。建议2000。调低快但不准，调高慢但准。"/>
+                                    </StackPanel>
+                                    <!-- Hierarchical -->
+                                    <StackPanel x:Name="HierarchicalParamPanel" Visibility="Collapsed" Grid.Row="9">
+                                        <TextBlock Text="最大采样数 (maxSamples)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="HierarchicalMaxSamplesBox" Width="100" Margin="0,5,0,10" Value="350" Minimum="1" Maximum="1000000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="用于层次聚类的最大像素采样数。整数。建议350。调低快但不准，调高慢但准。"/>
+                                        <TextBlock Text="链接方式 (linkage)" Foreground="#FFF"/>
+                                        <ComboBox x:Name="HierarchicalLinkageBox" Width="100" Margin="0,5,0,10" SelectedIndex="0" SelectionChanged="HierarchicalComboBox_SelectionChanged" Foreground="#FFF"
+                                            ToolTip="层次聚类的合并方式。单链接：易分长链，噪声敏感；全链接：分簇紧凑，抗噪声；平均链接：折中。">
+                                            <ComboBoxItem Content="单链接" Tag="Single" ToolTip="每次合并最近的两个簇，易分长链，噪声敏感。"/>
+                                            <ComboBoxItem Content="全链接" Tag="Complete" ToolTip="每次合并最远的两个簇，分簇紧凑，抗噪声。"/>
+                                            <ComboBoxItem Content="平均链接" Tag="Average" ToolTip="每次合并平均距离最近的两个簇，折中方案。"/>
+                                        </ComboBox>
+                                        <TextBlock Text="距离类型 (distance)" Foreground="#FFF"/>
+                                        <ComboBox x:Name="HierarchicalDistanceTypeBox" Width="100" Margin="0,5,0,10" SelectedIndex="0" SelectionChanged="HierarchicalComboBox_SelectionChanged" Foreground="#FFF"
+                                            ToolTip="聚类时的距离度量方式。欧氏距离：常用，适合连续数据；曼哈顿距离：适合离散数据。">
+                                            <ComboBoxItem Content="欧氏距离" Tag="Euclidean" ToolTip="常用距离，适合连续数据。"/>
+                                            <ComboBoxItem Content="曼哈顿距离" Tag="Manhattan" ToolTip="适合离散数据。"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <!-- Spectral -->
+                                    <StackPanel x:Name="SpectralParamPanel" Visibility="Collapsed" Grid.Row="10">
+                                        <TextBlock Text="最大采样数 (maxSamples)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="SpectralMaxSamplesBox" Width="100" Margin="0,5,0,10" Value="2000" Minimum="1" Maximum="1000000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="用于谱聚类的最大像素采样数。整数。建议2000。调低快但不准，调高慢但准。"/>
+                                        <TextBlock Text="高斯核σ (sigma)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="SpectralSigmaBox" Width="100" Margin="0,5,0,10" Value="32" Minimum="1" Maximum="255" ValueChanged="AlgorithmParamBox_ValueChanged" DecimalPoints="3"
+                                            ToolTip="谱聚类高斯核的σ。小数。建议16~64。调低分簇更细致，调高更粗糙。"/>
+                                        <TextBlock Text="KMeans迭代次数" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="SpectralKMeansItersBox" Width="100" Margin="0,5,0,10" Value="10" Minimum="1" Maximum="1000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="谱聚类后KMeans的迭代次数。整数。建议5~20。调低快但不准，调高慢但准。"/>
+                                    </StackPanel>
+                                    <!-- Lab KMeans -->
+                                    <StackPanel x:Name="LabKMeansParamPanel" Visibility="Collapsed" Grid.Row="11">
+                                        <TextBlock Text="最大迭代次数 (maxIterations)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="LabKMeansMaxIterationsBox" Width="100" Margin="0,5,0,10" Value="100" Minimum="1" Maximum="10000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="KMeans最大迭代次数。整数。建议50~200。调低可能聚类不收敛，调高速度变慢但更精确。"/>
+                                        <TextBlock Text="收敛阈值 (threshold)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="LabKMeansThresholdBox" Width="100" Margin="0,5,0,10" Value="1.0" Minimum="0" Maximum="1000" ValueChanged="AlgorithmParamBox_ValueChanged" DecimalPoints="3"
+                                            ToolTip="聚类收敛判定的阈值。小数。建议0.1~5。调低更精确但慢，调高更快但可能不够精细。"/>
+                                    </StackPanel>
+                                    <StackPanel x:Name="FloydSteinbergParamPanel" Visibility="Collapsed" Grid.Row="12">
+                                        <TextBlock Text="基础调色板算法" Foreground="#FFF"/>
+                                        <ComboBox x:Name="FloydBaseMethodBox" Width="120" Margin="0,5,0,10" Foreground="#FFF" SelectionChanged="FloydBaseMethodBox_SelectionChanged"
+                                            ToolTip="选择用于生成基础调色板的算法。不同算法对色彩分布和速度有影响。">
+                                            <ComboBoxItem Content="WPF中值切割" Tag="OnlyWpf" IsSelected="True" ToolTip="速度快，适合简单图片。"/>
+                                            <ComboBoxItem Content="KMeans++" Tag="OnlyKMeansPlusPlus" ToolTip="聚类效果更好，速度略慢。"/>
+                                            <ComboBoxItem Content="WPF+KMeans" Tag="KMeans" ToolTip="兼顾速度和效果。"/>
+                                            <ComboBoxItem Content="PCA主成分" Tag="Pca" ToolTip="适合主色明显的图片。"/>
+                                            <ComboBoxItem Content="DBSCAN" Tag="DBSCAN" ToolTip="适合复杂色彩分布。"/>
+                                        </ComboBox>
+                                        <TextBlock Text="抖动强度 (0.0~2.0)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="FloydDitherStrengthBox" Width="100" Margin="0,5,0,10" Value="1.0" Minimum="0" Maximum="2" DecimalPoints="2" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="抖动误差扩散强度。小数。建议1.0。调低抖动弱，调高抖动强，过高可能噪点多。"/>
+                                        <CheckBox x:Name="FloydSerpentineBox" Content="蛇形扫描" IsChecked="True" Foreground="#FFF"
+                                            Checked="FloydSerpentineBox_CheckedChanged"
+                                            Unchecked="FloydSerpentineBox_CheckedChanged"
+                                            ToolTip="开启后，抖动扫描方向每行交替，减少条纹伪影。建议开启。"/>
+                                    </StackPanel>
+                                    <StackPanel x:Name="OrderedDitherParamPanel" Visibility="Collapsed" Grid.Row="13">
+                                        <TextBlock Text="基础调色板算法" Foreground="#FFF"/>
+                                        <ComboBox x:Name="OrderedDitherBaseMethodBox" Width="120" Margin="0,5,0,10" Foreground="#FFF"
+                                            SelectionChanged="OrderedDitherBaseMethodBox_SelectionChanged"
+                                            ToolTip="选择用于生成基础调色板的算法。不同算法对色彩分布和速度有影响。">
+                                            <ComboBoxItem Content="WPF中值切割" Tag="OnlyWpf" IsSelected="True" ToolTip="速度快，适合简单图片。"/>
+                                            <ComboBoxItem Content="KMeans++" Tag="OnlyKMeansPlusPlus" ToolTip="聚类效果更好，速度略慢。"/>
+                                            <ComboBoxItem Content="WPF+KMeans" Tag="KMeans" ToolTip="兼顾速度和效果。"/>
+                                            <ComboBoxItem Content="PCA主成分" Tag="Pca" ToolTip="适合主色明显的图片。"/>
+                                            <ComboBoxItem Content="DBSCAN" Tag="DBSCAN" ToolTip="适合复杂色彩分布。"/>
+                                        </ComboBox>
+                                        <TextBlock Text="抖动强度 (0.0~2.0)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="OrderedDitherStrengthBox" Width="100" Margin="0,5,0,10" Value="1.0" Minimum="0" Maximum="2" DecimalPoints="2" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="抖动误差扩散强度。小数。建议1.0。调低抖动弱，调高抖动强，过高可能噪点多。"/>
+                                        <TextBlock Text="Bayer矩阵大小" Foreground="#FFF"/>
+                                        <ComboBox x:Name="OrderedDitherMatrixSizeBox" Width="100" Margin="0,5,0,10" Foreground="#FFF"
+                                            SelectionChanged="OrderedDitherMatrixSizeComboBox_SelectionChanged"
+                                            ToolTip="Bayer矩阵的大小。2x2：抖动颗粒大，4x4：常用，8x8：颗粒细腻但可能丢失细节。">
+                                            <ComboBoxItem Content="2x2" Tag="Size2x2" ToolTip="颗粒大，适合特殊风格。"/>
+                                            <ComboBoxItem Content="4x4" Tag="Size4x4" IsSelected="True" ToolTip="常用，平衡细腻与速度。"/>
+                                            <ComboBoxItem Content="8x8" Tag="Size8x8" ToolTip="颗粒细腻但可能丢失细节。"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <!-- OPTICS -->
+                                    <StackPanel x:Name="OPTICSParamPanel" Visibility="Collapsed" Grid.Row="14">
+                                        <TextBlock Text="邻域半径 (epsilon)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="OPTICSEpsilonBox" Width="100" Margin="0,5,0,10" Value="32" Minimum="0" Maximum="255" ValueChanged="AlgorithmParamBox_ValueChanged" DecimalPoints="3"
+                                            ToolTip="OPTICS聚类的邻域半径。小数。建议8~64。调低分簇更细致，调高更粗糙。"/>
+                                        <TextBlock Text="最小点数 (minPts)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="OPTICSMinPtsBox" Width="100" Margin="0,5,0,10" Value="4" Minimum="1" Maximum="1000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="OPTICS聚类的最小点数。整数。建议3~10。调低更易分出小簇，调高更难分簇。"/>
+                                        <TextBlock Text="最大采样数 (maxSamples)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="OPTICSMaxSamplesBox" Width="100" Margin="0,5,0,10" Value="2000" Minimum="1" Maximum="1000000" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                            ToolTip="用于聚类的最大像素采样数。整数。建议2000。调低快但不准，调高慢但准。"/>
+                                    </StackPanel>
+                                    <StackPanel x:Name="FixedBitPaletteParamPanel" Visibility="Collapsed" Grid.Row="15">
+                                        <TextBlock Text="位深 (bit depth)" Foreground="#FFF" ToolTip="会覆盖上方的颜色数设置，生成固定位深的调色板。颜色数为2的位深次方。"/>
+                                        <local:NumberSelect x:Name="FixedBitDepthBox" Width="100" Margin="0,5,0,10" Value="4" Minimum="1" Maximum="8" ValueChanged="AlgorithmParamBox_ValueChanged"/>
+                                        <CheckBox x:Name="UseGrayFixedPaletteBox" Content="灰度调色板" Foreground="#FFF" Margin="0,0,0,10" Checked="UseGrayFixedPaletteBox_CheckedChanged" Unchecked="UseGrayFixedPaletteBox_CheckedChanged"
+                                                  ToolTip="颜色数为2的位深次方，但每个颜色都是灰度值。"/>
+
+                                    </StackPanel>
+                                </Grid>
+                                
+                            </StackPanel>
+                            
+                            <!-- 右侧色板区 -->
+                            <ScrollViewer Grid.Column="1">
+                                <DockPanel Name="autoPaletteBox" LastChildFill="False"/>
+                            </ScrollViewer>
+                        </Grid>
                     </Grid>
                 </TabItem>
             </TabControl>

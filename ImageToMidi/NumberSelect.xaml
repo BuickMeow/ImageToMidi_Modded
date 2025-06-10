@@ -18,7 +18,7 @@
         </Grid.ColumnDefinitions>
         <TextBox ClipToBounds="True" x:Name="textBox" Padding="0,0.5,0,-0.5" TextWrapping="Wrap" 
                  Text="{Binding Value}"
-                 RenderTransformOrigin="0.5,0.5" TextChanged="TextBox_TextChanged" TextInput="TextBox_TextInput" Margin="0,0,3,0" FontFamily="Roboto" FontSize="13">
+                 RenderTransformOrigin="0.5,0.5" TextChanged="TextBox_TextChanged" TextInput="TextBox_TextInput" Margin="0,0,3,0" FontFamily="Misans, Microsoft YaHei" FontSize="13" >
             <TextBox.RenderTransform>
                 <TransformGroup>
                     <ScaleTransform/>
