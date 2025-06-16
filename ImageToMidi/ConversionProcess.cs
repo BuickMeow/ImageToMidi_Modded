@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -466,23 +467,35 @@ namespace ImageToMidi
 
             return wb;
         }
-        public void WriteMidi(
-            string filename,
-            int ticksPerPixel,
-            int ppq,
-            int startOffset,
-            bool useColorEvents,
-            Action<double> reportProgress = null)
+        public static void WriteMidi(
+    string filename,
+    IEnumerable<ConversionProcess> processes,
+    int ticksPerPixel,
+    int ppq,
+    int startOffset,
+    int midiBPM,
+    bool useColorEvents,
+    Action<double> reportProgress = null)
         {
-            int tracks = Palette.Colors.Count;
-            // 统计总事件数（包括ColorEvent）
+            var processList = processes.ToList();
+            if (processList.Count == 0) return;
+
+            int tracks = processList[0].Palette.Colors.Count;
+            var palette = processList[0].Palette;
+
+            // 统计总事件数
             int totalEvents = 0;
-            for (int i = 0; i < tracks; i++)
+            foreach (var proc in processList)
             {
-                totalEvents += EventBuffers[i].Count();
-                if (useColorEvents) totalEvents++; // 每轨道加一个ColorEvent
+                for (int i = 0; i < tracks; i++)
+                {
+                    var eventBuffersField = typeof(ConversionProcess).GetField("EventBuffers", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var eventBuffers = eventBuffersField.GetValue(proc) as FastList<MIDIEvent>[];
+                    totalEvents += eventBuffers[i].Count();
+                    if (useColorEvents) totalEvents++; // 每轨道每帧加一个ColorEvent
+                }
             }
-            if (totalEvents == 0) totalEvents = 1; // 防止除0
+            if (totalEvents == 0) totalEvents = 1;
 
             int writtenEvents = 0;
 
@@ -494,36 +507,65 @@ namespace ImageToMidi
                 writer.WritePPQ((ushort)ppq);
                 writer.WriteNtrks((ushort)tracks);
 
+                int tempo = 60000000 / midiBPM;
+
                 for (int i = 0; i < tracks; i++)
                 {
                     writer.InitTrack();
-                    if (useColorEvents)
+                    // 只在第一个轨道插入TempoEvent
+                    if (i == 0)
                     {
-                        var c = Palette.Colors[i];
-                        writer.Write(new ColorEvent(0, 0, c.R, c.G, c.B, c.A));
+                        writer.Write(new TempoEvent(0, tempo));
                         writtenEvents++;
-                        reportProgress?.Invoke((double)writtenEvents / totalEvents);
                     }
 
-                    uint o = (uint)startOffset;
-                    foreach (MIDIEvent e in EventBuffers[i])
+                    // 1. 收集所有帧的事件，转换为绝对tick
+                    var absEvents = new List<(ulong absTick, MIDIEvent e)>();
+                    ulong globalTick = (ulong)startOffset;
+                    for (int frameIdx = 0; frameIdx < processList.Count; frameIdx++)
                     {
-                        var _e = e.Clone();
-                        _e.DeltaTime *= (uint)ticksPerPixel;
-                        _e.DeltaTime += o;
-                        o = 0;
-                        writer.Write(_e);
+                        var proc = processList[frameIdx];
+                        var eventBuffersField = typeof(ConversionProcess).GetField("EventBuffers", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        var eventBuffers = eventBuffersField.GetValue(proc) as FastList<MIDIEvent>[];
 
+                        // ColorEvent
+                        if (useColorEvents)
+                        {
+                            var c = palette.Colors[i];
+                            absEvents.Add((globalTick, new ColorEvent(0, 0, c.R, c.G, c.B, c.A)));
+                        }
+
+                        ulong tick = globalTick;
+                        foreach (MIDIEvent e in eventBuffers[i])
+                        {
+                            tick += e.DeltaTime * (ulong)ticksPerPixel;
+                            absEvents.Add((tick, e.Clone()));
+                        }
+
+                        // 推进globalTick：每帧的tick长度 = 图片高度
+                        int frameHeight = proc.targetHeight; // targetHeight为每帧图片高度
+                        globalTick += (ulong)(frameHeight * ticksPerPixel);
+                    }
+
+                    // 2. 按绝对tick排序
+                    absEvents.Sort((a, b) => a.absTick.CompareTo(b.absTick));
+
+                    // 3. 重新计算DeltaTime并写入
+                    ulong lastTick = 0;
+                    foreach (var (absTick, e) in absEvents)
+                    {
+                        e.DeltaTime = (uint)(absTick - lastTick);
+                        writer.Write(e);
+                        lastTick = absTick;
                         writtenEvents++;
-                        // 进度回调
-                        if ((writtenEvents & 0x3F) == 0 || writtenEvents == totalEvents) //每64个事件或最后一个事件更新一次，防止UI过载
+                        if ((writtenEvents & 0x3F) == 0 || writtenEvents == totalEvents)
                             reportProgress?.Invoke((double)writtenEvents / totalEvents);
                     }
+
                     writer.EndTrack();
                 }
                 writer.Close();
             }
-            // 最终确保100%
             reportProgress?.Invoke(1.0);
         }
 

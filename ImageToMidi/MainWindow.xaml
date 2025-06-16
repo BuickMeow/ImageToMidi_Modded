@@ -13,7 +13,7 @@
         TextOptions.TextRenderingMode="Auto"        
         Background="{DynamicResource MaterialDesignPaper}"
         FontFamily="Misans, Microsoft YaHei"
-        Title="Image To MIDI 魔改版v1.3.8" Height="496" Width="1186" WindowStyle="None">
+        Title="Image To MIDI 魔改版v1.4.1" Height="496" Width="1186" WindowStyle="None">
     <Window.Resources>
         <BitmapImage x:Key="Icon" UriSource="i2m.png" />
         <Style TargetType="DockPanel" x:Key="CustomHeightDockPanelStyle">
@@ -54,33 +54,33 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
-                        <!--ColumnDefinition Width="*"/-->
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Button x:Name="browseImage" Width="75" materialDesign:RippleAssist.RippleSizeMultiplier="2" Grid.Column="0" Click="BrowseImage_Click">
+                    <Button x:Name="browseImage" Width="Auto" Margin="3 0 3 0" materialDesign:RippleAssist.RippleSizeMultiplier="2" Grid.Column="0" Click="BrowseImage_Click">
                         <Button.Content>
-                            <materialDesign:PackIcon Kind="FolderOpen" Width="20" Height="20"/>
+                            <materialDesign:PackIcon Kind="ImagePlus" Width="20" Height="20"/>
                         </Button.Content>
                     </Button>
-                    <Button x:Name="rotateLeftButton" Width="75" Grid.Column="1" Click="RotateLeftButton_Click">
+                    <Button x:Name="rotateLeftButton" Width="Auto" Margin="3 0 3 0" Grid.Column="1" Click="RotateLeftButton_Click">
                         <Button.Content>
                             <materialDesign:PackIcon Kind="RotateLeft" Width="20" Height="20"/>
                         </Button.Content>
                     </Button>
-                    <Button x:Name="rotateRightButton" Width="75" Grid.Column="2" Click="RotateRightButton_Click">
+                    <Button x:Name="rotateRightButton" Width="Auto" Margin="3 0 3 0" Grid.Column="2" Click="RotateRightButton_Click">
                         <Button.Content>
                             <materialDesign:PackIcon Kind="RotateRight" Width="20" Height="20"/>
                         </Button.Content>
                     </Button>
-                    <Button x:Name="flipHorizontalButton" Width="75" Grid.Column="3" Click="FlipHorizontalButton_Click">
+                    <Button x:Name="flipHorizontalButton" Width="Auto" Margin="3 0 3 0" Grid.Column="3" Click="FlipHorizontalButton_Click">
                         <Button.Content>
                             <materialDesign:PackIcon Kind="FormatHorizontalAlignCenter" Width="20" Height="20"/>
                         </Button.Content>
                     </Button>
-                    <!--Button x:Name="flipVerticalButton" Width="75" Grid.Column="4">
+                    <Button x:Name="BatchButton" Width="Auto" Margin="3 0 3 0" Grid.Column="4" Click="BatchButton_Click">
                         <Button.Content>
-                            <materialDesign:PackIcon Kind="FlipVertical" Width="20" Height="20"/>
+                            <materialDesign:PackIcon Kind="ImageMultiple" Width="20" Height="20"/>
                         </Button.Content>
-                    </Button-->
+                    </Button>
                 </Grid>
                 <Grid Background="#37474F">
                     <!--<Image x:Name="openedImage" RenderOptions.BitmapScalingMode="NearestNeighbor" MouseDown="OpenedImage_MouseDown"/>-->
@@ -138,10 +138,11 @@
                                 <Label>起始偏移</Label>
                                 <local:NumberSelect x:Name="startOffset" Value="0" Width="80" Minimum="0" Maximum="999999" Margin="100,0,0,0"></local:NumberSelect>
                             </Grid>
-                            <Grid DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,7,0,0" VerticalAlignment="Top" Height="26" x:Name="CustomHeightDockPanel">
-                                <local:NumberSelect x:Name="CustomHeightNumberSelect" Width="80" Margin="0,0,-200,0" Minimum="0" Maximum="999999" Value="0" IsEnabled="False" ValueChanged="CustomHeightNumberSelect_ValueChanged" />
-                                <Button x:Name="HeightModeButton" Content="宽高相等" Width="90" Margin="-13,-7,3,-7" Click="HeightModeButton_Click"/>
+                            <Grid DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,7,0,0" VerticalAlignment="Top" Height="26">
+                                <Label>BPM</Label>
+                                <local:NumberSelect x:Name="midiBPM" Value="120" Width="80" Minimum="0" Maximum="60000000" Margin="100,0,0,0"></local:NumberSelect>
                             </Grid>
+                            
 
 
                         </DockPanel>
@@ -150,7 +151,10 @@
                             <!--RadioButton IsChecked="True" IsEnabled="{Binding IsChecked, ElementName=useNoteLength}" Name="startOfNotes" DockPanel.Dock="Bottom" Content="随颜色流动" HorizontalAlignment="Left" Grid.Row="1" VerticalAlignment="Top" Margin="5,0,0,0" Checked="StartOfNotes_Checked"/-->
                             <!--Label IsEnabled="{Binding IsChecked, ElementName=useNoteLength}" DockPanel.Dock="Bottom">过长音符的处理办法</Label-->
                             <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,0">
-
+                                <Grid DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,7,0,0" VerticalAlignment="Top" Height="26" x:Name="CustomHeightDockPanel">
+                                    <local:NumberSelect x:Name="CustomHeightNumberSelect" Width="80" Margin="0,0,-200,0" Minimum="0" Maximum="999999" Value="0" IsEnabled="False" ValueChanged="CustomHeightNumberSelect_ValueChanged" />
+                                    <Button x:Name="HeightModeButton" Content="宽高相等" Width="90" Margin="0,-7,3,0" Click="HeightModeButton_Click"/>
+                                </Grid>
                                 <DockPanel>
                                     <CheckBox DockPanel.Dock="Left" Checked="GenColorEventsCheck_Checked" Unchecked="GenColorEventsCheck_Checked" IsChecked="True" Name="genColorEventsCheck" Padding="2" VerticalAlignment="Top">
                                         <Label Padding="2" Margin="0,1,0,0">生成颜色事件</Label>
@@ -188,7 +192,7 @@
                   ToolTip="利用积分图像快速计算区域均值，适合大图像处理。"/>
                                 </ComboBox>
                                 <DockPanel DockPanel.Dock="Bottom" HorizontalAlignment="Left" VerticalAlignment="Top" Height="26">
-                                    <Button x:Name="NoteLengthModeButton" Content="不限制音符长度" Width="150" Margin="0,-35,5,-30" Click="NoteLengthModeButton_Click"/>
+                                    <Button x:Name="NoteLengthModeButton" Content="不限制音符长度" Width="130" Padding="0" Margin="0,-35,5,-30" Click="NoteLengthModeButton_Click"/>
                                     <local:NumberSelect ValueChanged="NoteSplitLength_ValueChanged"
                         x:Name="noteSplitLength"
                         Width="80"
@@ -212,12 +216,42 @@
                         <ColumnDefinition Width="1*"/>
                         <ColumnDefinition Width="1*"/>
                     </Grid.ColumnDefinitions-->
-                    <DockPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,0">
-                        <Label>范围</Label>
-                        <local:NumberSelect ValueChanged="FirstKeyNumber_ValueChanged" x:Name="firstKeyNumber" Margin="5,0,5,0" Value="0" Minimum="0" Maximum="255" Width="60"></local:NumberSelect>
-                        <local:NumberSelect ValueChanged="LastKeyNumber_ValueChanged" x:Name="lastKeyNumber" Margin="5,0,0,0" Value="127" Minimum="0" Maximum="255" Width="60"></local:NumberSelect>
-                        <Button x:Name="WhiteKeyModeButton" Content="128键" Width="120" Margin="10,-7,0,-7" Click="WhiteKeyModeButton_Click"/>
-                    </DockPanel>
+                    <Grid Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="0,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0">琴键范围</Label>
+                        <local:NumberSelect
+        ValueChanged="FirstKeyNumber_ValueChanged"
+        x:Name="firstKeyNumber"
+        Margin="5,0,5,0"
+        Value="0"
+        Minimum="0"
+        Maximum="255"
+        Width="60"
+        Grid.Column="1"/>
+                        <local:NumberSelect
+        ValueChanged="LastKeyNumber_ValueChanged"
+        x:Name="lastKeyNumber"
+        Margin="5,0,0,0"
+        Value="127"
+        Minimum="0"
+        Maximum="255"
+        Width="60"
+        Grid.Column="2"/>
+                        <Button
+        x:Name="WhiteKeyModeButton"
+        Content="128键"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Center"
+        Padding="0"
+        Margin="10,-7,0,-7"
+        Click="WhiteKeyModeButton_Click"
+        Grid.Column="3"/>
+                    </Grid>
                     <!--DockPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,0">
                         <Label>最右侧琴键</Label>
                         <local:NumberSelect ValueChanged="LastKeyNumber_ValueChanged" x:Name="lastKeyNumber" Margin="5,0,0,0" Value="127" Minimum="1" Maximum="255" Width="70"></local:NumberSelect>
@@ -521,8 +555,9 @@ Unchecked="GrayScaleCheckBox_CheckedChanged"/>
                                             ToolTip="用于聚类的最大像素采样数。整数。建议2000。调低快但不准，调高慢但准。"/>
                                     </StackPanel>
                                     <StackPanel x:Name="FixedBitPaletteParamPanel" Visibility="Collapsed" Grid.Row="15">
-                                        <TextBlock Text="位深 (bit depth)" Foreground="#FFF" ToolTip="会覆盖上方的颜色数设置，生成固定位深的调色板。颜色数为2的位深次方。"/>
-                                        <local:NumberSelect x:Name="FixedBitDepthBox" Width="100" Margin="0,5,0,10" Value="4" Minimum="1" Maximum="8" ValueChanged="AlgorithmParamBox_ValueChanged"/>
+                                        <TextBlock Text="位深 (bit depth)" Foreground="#FFF"/>
+                                        <local:NumberSelect x:Name="FixedBitDepthBox" Width="100" Margin="0,5,0,10" Value="4" Minimum="1" Maximum="8" ValueChanged="AlgorithmParamBox_ValueChanged"
+                                                             ToolTip="会覆盖上方的颜色数设置，生成固定位深的调色板。颜色数为2的位深次方。"/>
                                         <CheckBox x:Name="UseGrayFixedPaletteBox" Content="灰度调色板" Foreground="#FFF" Margin="0,0,0,10" Checked="UseGrayFixedPaletteBox_CheckedChanged" Unchecked="UseGrayFixedPaletteBox_CheckedChanged"
                                                   ToolTip="颜色数为2的位深次方，但每个颜色都是灰度值。"/>
 

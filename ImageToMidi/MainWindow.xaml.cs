@@ -1,6 +1,8 @@
 ﻿using Microsoft.Win32;
+using MIDIModificationFramework;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -57,7 +59,7 @@ namespace ImageToMidi
         int openedImageWidth = 0;
         int openedImageHeight = 0;
         string openedImagePath = "";
-        BitmapPalette chosenPalette = null;
+        public BitmapPalette chosenPalette = null;
 
         ConversionProcess convert = null;
         private int lastPaletteColorCount = -1;
@@ -182,9 +184,26 @@ namespace ImageToMidi
             OrderedDitherStrengthBox.ValueChanged += AlgorithmParamBox_ValueChanged;
             OrderedDitherMatrixSizeBox.SelectionChanged += OrderedDitherMatrixSizeComboBox_SelectionChanged;
 
+            this.Closing += MainWindow_Closing;
+
             UpdateNoteLengthModeUI();            
         }
-
+        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (batchWindow != null)
+            {
+                batchWindow.ForceClose();
+            }
+        }
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            // 关闭批处理窗口
+            if (batchWindow != null)
+            {
+                batchWindow.ForceClose();
+            }
+            base.OnClosing(e);
+        }
 
         private void ExitButton_Click(object sender, RoutedEventArgs e)
         {
@@ -403,8 +422,82 @@ namespace ImageToMidi
             //UpdateCustomHeightNumberSelect();
             saveMidi.Content = "正在生成色板... 0%";
             await ReloadAutoPalette();
+
+            // 在BrowseImage_Click加载图片成功后添加
+            // 加载图片后，确保完整添加 BatchFileItem
+            BatchFileList.Add(new BatchFileItem
+            {
+                Index = BatchFileList.Count + 1,
+                Format = System.IO.Path.GetExtension(openedImagePath).TrimStart('.').ToUpperInvariant(),
+                FileName = System.IO.Path.GetFileName(openedImagePath),
+                FrameCount = 1,
+                Resolution = $"{originalImageSrc.PixelWidth}x{originalImageSrc.PixelHeight}",
+                FullPath = openedImagePath
+            });
         }
 
+        public async void LoadImageForPreview(string imagePath)
+        {
+            if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+                return;
+
+            openedImagePath = imagePath;
+
+            // 清理所有缓存
+            openedImageSrc = null;
+            openedImagePixels = null;
+            originalImageSrc = null;
+            ditheredImagePixels = null;
+            chosenPalette = null;
+            convert = null;
+            openedImage.Source = null;
+            genImage.Source = null;
+
+            // 清理所有缩略图缓存
+            landscapeColorPreviewSrc = null;
+            landscapeColorPreviewPixels = null;
+            landscapeGrayPreviewSrc = null;
+            landscapeGrayPreviewPixels = null;
+            portraitColorPreviewSrc = null;
+            portraitColorPreviewPixels = null;
+            portraitGrayPreviewSrc = null;
+            portraitGrayPreviewPixels = null;
+
+            // 可选：重置旋转和镜像状态
+            previewRotation = 0;
+            previewFlip = false;
+            openedImage.ImageRotation = 0;
+            openedImage.ImageFlip = false;
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
+            saveMidi.IsEnabled = false;
+            var progress = new Progress<string>(msg => saveMidi.Content = msg);
+
+            // 1. 只解码一次原图
+            var (src, previewSrc, pixels) = await LoadAndProcessImageAsync(openedImagePath, false, progress);
+            originalImageSrc = src;
+
+            // 2. 直接预览原图
+            openedImage.Source = src;
+
+            // 4. 切换到当前缩略图（同步 openedImageSrc 和 openedImagePixels）
+            await UpdateOpenedImageByMode();
+            openedImage.Source = originalImageSrc;
+            CustomHeightNumberSelect.Value = GetTargetHeight();
+
+            // 5. 更新UI和后续流程
+            openedImageWidth = openedImageSrc.PixelWidth;
+            openedImageHeight = openedImageSrc.PixelHeight;
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
+            saveMidi.Content = "正在生成色板... 0%";
+            await ReloadAutoPalette();
+        }
         private async Task<(BitmapSource original, BitmapSource preview, byte[] previewPixels)> LoadAndProcessImageAsync(
     string path, bool previewToGray, IProgress<string> progress = null)
         {
@@ -1136,7 +1229,7 @@ namespace ImageToMidi
             int n = midiKey % 12;
             return n == 0 || n == 2 || n == 4 || n == 5 || n == 7 || n == 9 || n == 11;
         }
-        private List<int> GetKeyList()
+        public List<int> GetKeyList()
         {
             int start = (int)firstKeyNumber.Value;
             int end = (int)lastKeyNumber.Value;
@@ -1286,7 +1379,7 @@ namespace ImageToMidi
 
 
 
-        private int GetTargetHeight()
+        public int GetTargetHeight()
         {
             int effectiveWidth = GetEffectiveKeyWidth();
             switch (heightMode)
@@ -1298,6 +1391,10 @@ namespace ImageToMidi
                 case HeightModeEnum.CustomHeight:
                     return customHeight;
                 case HeightModeEnum.OriginalAspectRatio:
+                    if (originalImageSrc == null)
+                    {
+                        return 0;
+                    }
                     if (previewRotation == 90 || previewRotation == 270)
                     {
                         double aspectRatio = (double)originalImageSrc.PixelWidth / originalImageSrc.PixelHeight;
@@ -1308,7 +1405,7 @@ namespace ImageToMidi
                         double aspectRatio = (double)originalImageSrc.PixelHeight / originalImageSrc.PixelWidth;
                         return (int)(effectiveWidth * aspectRatio);
                     }
-                default:
+                        default:
                     return originalImageSrc != null ? originalImageSrc.PixelHeight : openedImageHeight;
             }
         }
@@ -1353,20 +1450,23 @@ namespace ImageToMidi
                     int ticksPerPixelValue = (int)ticksPerPixel.Value;
                     int midiPPQValue = (int)midiPPQ.Value;
                     int startOffsetValue = (int)startOffset.Value;
+                    int midiBPMValue = (int)midiBPM.Value;
 
                     double lastReport = 0;
                     DateTime lastReportTime = DateTime.Now;
 
                     await Task.Run(() =>
                     {
-                        convert.WriteMidi(
-                            save.FileName,
-                            ticksPerPixelValue,
-                            midiPPQValue,
-                            startOffsetValue,
-                            colorEvents,
-                            progress =>
-                            {
+                        ConversionProcess.WriteMidi(
+    save.FileName,
+    new[] { convert }, // 传递单个 ConversionProcess 的集合
+    ticksPerPixelValue,
+    midiPPQValue,
+    startOffsetValue,
+    midiBPMValue,
+    colorEvents,
+    progress =>
+    { 
                                 if (progress - lastReport >= 0.01 || (DateTime.Now - lastReportTime).TotalMilliseconds > 100 || progress == 1.0)
                                 {
                                     lastReport = progress;
@@ -1723,7 +1823,7 @@ namespace ImageToMidi
             CustomHeightNumberSelect.Value = GetTargetHeight();
             ReloadPreview();
         }
-        private int GetEffectiveKeyWidth()
+        public int GetEffectiveKeyWidth()
         {
             int start = (int)firstKeyNumber.Value;
             int end = (int)lastKeyNumber.Value;
@@ -2037,6 +2137,462 @@ namespace ImageToMidi
             {
                 openedImagePixels = null;
             }
+        }
+        // 在MainWindow类中添加
+        public ObservableCollection<BatchFileItem> BatchFileList = new ObservableCollection<BatchFileItem>();
+        private BatchWindow batchWindow;
+
+        // BatchButton点击事件
+        private void BatchButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (batchWindow == null)
+            {
+                batchWindow = new BatchWindow(BatchFileList);
+            }
+            if (!batchWindow.IsVisible)
+            {
+                batchWindow.Show();
+            }
+            else
+            {
+                batchWindow.Activate();
+            }
+        }
+        public async Task BatchExportMidiAsync(
+    IEnumerable<BatchFileItem> items,
+    string exportFolder,
+    IProgress<(int current, int total, string fileName)> progress = null)
+        {
+            int success = 0, fail = 0;
+            var failList = new List<string>();
+            var itemList = items.ToList();
+            int total = itemList.Count;
+
+            // 先在UI线程读取所有需要的参数，避免跨线程访问控件
+            int colorCount = (int)trackCount.Value;
+            int ticksPerPixelValue = (int)ticksPerPixel.Value;
+            int midiPPQValue = (int)midiPPQ.Value;
+            int startOffsetValue = (int)startOffset.Value;
+            int midiBPMValue = (int)midiBPM.Value;
+            bool genColorEvents = (bool)genColorEventsCheck.IsChecked;
+            int firstKey = (int)firstKeyNumber.Value;
+            int lastKey = (int)lastKeyNumber.Value;
+            int noteSplitLengthValue = (int)noteSplitLength.Value;
+            int targetHeight = GetTargetHeight();
+            ResizeAlgorithm resizeAlgorithmValue = currentResizeAlgorithm;
+            var keyList = GetKeyList();
+            var noteLengthModeValue = noteLengthMode;
+            var whiteKeyModeValue = whiteKeyMode;
+            int effectiveWidth = GetEffectiveKeyWidth();
+
+            // 聚类算法相关参数
+            var selectedItem = ClusterMethodComboBox.SelectedItem as ComboBoxItem;
+            var method = Clusterisation.PaletteClusterMethod.OnlyWpf;
+            var floydBaseMethod = Clusterisation.PaletteClusterMethod.OnlyWpf;
+            if (selectedItem != null)
+            {
+                var tag = selectedItem.Tag as string;
+                switch (tag)
+                {
+                    case "OnlyWpf": method = Clusterisation.PaletteClusterMethod.OnlyWpf; break;
+                    case "OnlyKMeansPlusPlus": method = Clusterisation.PaletteClusterMethod.OnlyKMeansPlusPlus; break;
+                    case "KMeans": method = Clusterisation.PaletteClusterMethod.KMeans; break;
+                    case "KMeansPlusPlus": method = Clusterisation.PaletteClusterMethod.KMeansPlusPlus; break;
+                    case "Popularity": method = Clusterisation.PaletteClusterMethod.Popularity; break;
+                    case "Octree": method = Clusterisation.PaletteClusterMethod.Octree; break;
+                    case "VarianceSplit": method = Clusterisation.PaletteClusterMethod.VarianceSplit; break;
+                    case "Pca": method = Clusterisation.PaletteClusterMethod.Pca; break;
+                    case "MaxMin": method = Clusterisation.PaletteClusterMethod.MaxMin; break;
+                    case "NativeKMeans": method = Clusterisation.PaletteClusterMethod.NativeKMeans; break;
+                    case "MeanShift": method = Clusterisation.PaletteClusterMethod.MeanShift; break;
+                    case "DBSCAN": method = Clusterisation.PaletteClusterMethod.DBSCAN; break;
+                    case "GMM": method = Clusterisation.PaletteClusterMethod.GMM; break;
+                    case "Hierarchical": method = Clusterisation.PaletteClusterMethod.Hierarchical; break;
+                    case "Spectral": method = Clusterisation.PaletteClusterMethod.Spectral; break;
+                    case "LabKMeans": method = Clusterisation.PaletteClusterMethod.LabKMeans; break;
+                    case "FloydSteinbergDither": method = Clusterisation.PaletteClusterMethod.FloydSteinbergDither; break;
+                    case "OrderedDither": method = Clusterisation.PaletteClusterMethod.OrderedDither; break;
+                    case "OPTICS": method = Clusterisation.PaletteClusterMethod.OPTICS; break;
+                    case "FixedBitPalette": method = Clusterisation.PaletteClusterMethod.FixedBitPalette; break;
+                }
+                if (FloydBaseMethodBox != null)
+                {
+                    var baseTag = ((ComboBoxItem)FloydBaseMethodBox.SelectedItem)?.Tag as string;
+                    switch (baseTag)
+                    {
+                        case "OnlyWpf": floydBaseMethod = Clusterisation.PaletteClusterMethod.OnlyWpf; break;
+                        case "OnlyKMeansPlusPlus": floydBaseMethod = Clusterisation.PaletteClusterMethod.OnlyKMeansPlusPlus; break;
+                        case "KMeans": floydBaseMethod = Clusterisation.PaletteClusterMethod.KMeans; break;
+                        case "Pca": floydBaseMethod = Clusterisation.PaletteClusterMethod.Pca; break;
+                        case "DBSCAN": floydBaseMethod = Clusterisation.PaletteClusterMethod.DBSCAN; break;
+                    }
+                }
+            }
+
+            for (int i = 0; i < total; i++)
+            {
+                var item = itemList[i];
+                try
+                {
+                    // 进度回调
+                    progress?.Report((i + 1, total, item.FileName));
+
+                    string imgPath = item.FullPath ?? item.FileName;
+                    if (!File.Exists(imgPath)) throw new FileNotFoundException("文件不存在", imgPath);
+
+                    // 1. 读取图片字节流
+                    byte[] imageBytes = await Task.Run(() => File.ReadAllBytes(imgPath));
+
+                    // 2. 在UI线程创建BitmapImage并Freeze
+                    BitmapSource src = null;
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        using (var ms = new MemoryStream(imageBytes))
+                        {
+                            var bmp = new BitmapImage();
+                            bmp.BeginInit();
+                            bmp.CacheOption = BitmapCacheOption.OnLoad;
+                            bmp.StreamSource = ms;
+                            bmp.EndInit();
+                            bmp.Freeze();
+                            src = bmp;
+                        }
+                    });
+
+                    // 3. 旋转/翻转/灰度处理
+                    int rot = previewRotation;
+                    bool flip = previewFlip;
+                    bool isGray = grayScaleCheckBox.IsChecked == true;
+                    if (flip)
+                    {
+                        if (rot == 90) rot = 270;
+                        else if (rot == 270) rot = 90;
+                    }
+                    switch (rot)
+                    {
+                        case 90: src = await Rotate90(src); break;
+                        case 180: src = await Rotate180(src); break;
+                        case 270: src = await Rotate270(src); break;
+                    }
+                    if (flip) src = await FlipHorizontal(src);
+                    if (isGray) src = ToGrayScale(src);
+                    if (src != null && !src.IsFrozen) src.Freeze();
+
+                    // 4. 提取像素
+                    int width = src.PixelWidth, height = src.PixelHeight, stride = width * 4;
+                    byte[] pixels = new byte[height * stride];
+                    src.CopyPixels(pixels, stride, 0);
+
+                    // 5. 生成色板
+                    var options = new ClusteriseOptions
+                    {
+                        ColorCount = colorCount,
+                        Method = method,
+                        Src = src,
+                        KMeansThreshold = kmeansThreshold,
+                        KMeansMaxIterations = kmeansMaxIterations,
+                        KMeansPlusPlusMaxSamples = kmeansPlusPlusMaxSamples,
+                        KMeansPlusPlusSeed = kmeansPlusPlusSeed,
+                        OctreeMaxLevel = octreeMaxLevel,
+                        OctreeMaxSamples = octreeMaxSamples,
+                        VarianceSplitMaxSamples = varianceSplitMaxSamples,
+                        PcaPowerIterations = pcaPowerIterations,
+                        PcaMaxSamples = pcaMaxSamples,
+                        WeightedMaxMinIters = weightedMaxMinIters,
+                        WeightedMaxMinMaxSamples = weightedMaxMinMaxSamples,
+                        NativeKMeansIterations = nativeKMeansIterations,
+                        NativeKMeansRate = nativeKMeansRate,
+                        MeanShiftBandwidth = meanShiftBandwidth,
+                        MeanShiftMaxIter = meanShiftMaxIter,
+                        MeanShiftMaxSamples = meanShiftMaxSamples,
+                        DbscanEpsilon = dbscanEpsilon,
+                        DbscanMinPts = dbscanMinPts,
+                        DbscanMaxSamples = dbscanMaxSamples,
+                        GmmMaxIter = gmmMaxIter,
+                        GmmTol = gmmTol,
+                        GmmMaxSamples = gmmMaxSamples,
+                        HierarchicalMaxSamples = hierarchicalMaxSamples,
+                        HierarchicalLinkage = hierarchicalLinkage,
+                        HierarchicalDistanceType = hierarchicalDistanceType,
+                        SpectralMaxSamples = spectralMaxSamples,
+                        SpectralSigma = spectralSigma,
+                        SpectralKMeansIters = spectralKMeansIters,
+                        LabKMeansMaxIterations = labKMeansMaxIterations,
+                        LabKMeansThreshold = labKMeansThreshold,
+                        FloydBaseMethod = (method == Clusterisation.PaletteClusterMethod.FloydSteinbergDither) ? floydBaseMethod : floydBaseMethod,
+                        FloydDitherStrength = floydDitherStrength,
+                        FloydSerpentine = floydSerpentine,
+                        OrderedDitherStrength = orderedDitherStrength,
+                        OrderedDitherMatrixSize = orderedDitherMatrixSize,
+                        OpticsEpsilon = opticsEpsilon,
+                        OpticsMinPts = opticsMinPts,
+                        OpticsMaxSamples = opticsMaxSamples,
+                        BitDepth = fixedBitDepth,
+                        UseGrayFixedPalette = useGrayFixedPalette,
+                    };
+
+                    double lastChange;
+                    byte[] ditheredPixels;
+                    var palette = Clusterisation.ClusteriseByMethod(
+                        pixels, options, out lastChange, out ditheredPixels, null);
+
+                    // 6. 生成MIDI
+                    var convert = new ConversionProcess(
+                        palette,
+                        pixels,
+                        width * 4,
+                        firstKey,
+                        lastKey + 1,
+                        noteLengthModeValue == NoteLengthMode.SplitToGrid,
+                        noteLengthModeValue != NoteLengthMode.Unlimited ? noteSplitLengthValue : 0,
+                        targetHeight,
+                        resizeAlgorithmValue,
+                        keyList,
+                        whiteKeyModeValue == WhiteKeyMode.WhiteKeysFixed,
+                        whiteKeyModeValue == WhiteKeyMode.BlackKeysFixed,
+                        whiteKeyModeValue == WhiteKeyMode.WhiteKeysClipped,
+                        whiteKeyModeValue == WhiteKeyMode.BlackKeysClipped
+                    );
+                    convert.EffectiveWidth = effectiveWidth;
+
+                    await convert.RunProcessAsync(null);
+
+                    // 7. 导出MIDI
+                    string midiName = $"{item.Index:D2}_{System.IO.Path.GetFileNameWithoutExtension(item.FileName)}.mid";
+                    string midiPath = System.IO.Path.Combine(exportFolder, midiName);
+                    await Task.Run(() =>
+                    {
+                        ConversionProcess.WriteMidi(
+    midiPath,
+    new[] { convert },
+    ticksPerPixelValue,
+    midiPPQValue,
+    startOffsetValue,
+    midiBPMValue,
+    genColorEvents
+);
+                    });
+
+                    success++;
+                }
+                catch (Exception ex)
+                {
+                    fail++;
+                    failList.Add($"{item.FileName}：{ex.Message}\n{ex.StackTrace}");
+                }
+            }
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            //MessageBox.Show($"批量导出完成！成功：{success}，失败：{fail}\n{string.Join("\n", failList)}", "导出结果");
+        }
+        // 合并导出：所有图片音符拼接到一个轨道
+        public async Task BatchExportMidiConcatAsync(
+    IEnumerable<BatchFileItem> items,
+    string outputMidiPath,
+    IProgress<(int current, int total, string fileName)> progress = null)
+        {
+            var itemList = items.ToList();
+            int total = itemList.Count;
+            int colorCount = (int)trackCount.Value;
+            int ticksPerPixelValue = (int)ticksPerPixel.Value;
+            int midiPPQValue = (int)midiPPQ.Value;
+            int startOffsetValue = (int)startOffset.Value;
+            int midiBPMValue = (int)midiBPM.Value;
+            int firstKey = (int)firstKeyNumber.Value;
+            int lastKey = (int)lastKeyNumber.Value;
+            int noteSplitLengthValue = (int)noteSplitLength.Value;
+            int targetHeight = GetTargetHeight();
+            ResizeAlgorithm resizeAlgorithmValue = currentResizeAlgorithm;
+            var keyList = GetKeyList();
+            var noteLengthModeValue = noteLengthMode;
+            var whiteKeyModeValue = whiteKeyMode;
+            int effectiveWidth = GetEffectiveKeyWidth();
+
+            // 聚类算法参数
+            var selectedItem = ClusterMethodComboBox.SelectedItem as ComboBoxItem;
+            var method = Clusterisation.PaletteClusterMethod.OnlyWpf;
+            var floydBaseMethod = Clusterisation.PaletteClusterMethod.OnlyWpf;
+            if (selectedItem != null)
+            {
+                var tag = selectedItem.Tag as string;
+                switch (tag)
+                {
+                    case "OnlyWpf": method = Clusterisation.PaletteClusterMethod.OnlyWpf; break;
+                    case "OnlyKMeansPlusPlus": method = Clusterisation.PaletteClusterMethod.OnlyKMeansPlusPlus; break;
+                    case "KMeans": method = Clusterisation.PaletteClusterMethod.KMeans; break;
+                    case "KMeansPlusPlus": method = Clusterisation.PaletteClusterMethod.KMeansPlusPlus; break;
+                    case "Popularity": method = Clusterisation.PaletteClusterMethod.Popularity; break;
+                    case "Octree": method = Clusterisation.PaletteClusterMethod.Octree; break;
+                    case "VarianceSplit": method = Clusterisation.PaletteClusterMethod.VarianceSplit; break;
+                    case "Pca": method = Clusterisation.PaletteClusterMethod.Pca; break;
+                    case "MaxMin": method = Clusterisation.PaletteClusterMethod.MaxMin; break;
+                    case "NativeKMeans": method = Clusterisation.PaletteClusterMethod.NativeKMeans; break;
+                    case "MeanShift": method = Clusterisation.PaletteClusterMethod.MeanShift; break;
+                    case "DBSCAN": method = Clusterisation.PaletteClusterMethod.DBSCAN; break;
+                    case "GMM": method = Clusterisation.PaletteClusterMethod.GMM; break;
+                    case "Hierarchical": method = Clusterisation.PaletteClusterMethod.Hierarchical; break;
+                    case "Spectral": method = Clusterisation.PaletteClusterMethod.Spectral; break;
+                    case "LabKMeans": method = Clusterisation.PaletteClusterMethod.LabKMeans; break;
+                    case "FloydSteinbergDither": method = Clusterisation.PaletteClusterMethod.FloydSteinbergDither; break;
+                    case "OrderedDither": method = Clusterisation.PaletteClusterMethod.OrderedDither; break;
+                    case "OPTICS": method = Clusterisation.PaletteClusterMethod.OPTICS; break;
+                    case "FixedBitPalette": method = Clusterisation.PaletteClusterMethod.FixedBitPalette; break;
+                }
+                if (FloydBaseMethodBox != null)
+                {
+                    var baseTag = ((ComboBoxItem)FloydBaseMethodBox.SelectedItem)?.Tag as string;
+                    switch (baseTag)
+                    {
+                        case "OnlyWpf": floydBaseMethod = Clusterisation.PaletteClusterMethod.OnlyWpf; break;
+                        case "OnlyKMeansPlusPlus": floydBaseMethod = Clusterisation.PaletteClusterMethod.OnlyKMeansPlusPlus; break;
+                        case "KMeans": floydBaseMethod = Clusterisation.PaletteClusterMethod.KMeans; break;
+                        case "Pca": floydBaseMethod = Clusterisation.PaletteClusterMethod.Pca; break;
+                        case "DBSCAN": floydBaseMethod = Clusterisation.PaletteClusterMethod.DBSCAN; break;
+                    }
+                }
+            }
+
+            // 收集所有图片的ConversionProcess
+            var processList = new List<ConversionProcess>();
+            for (int i = 0; i < total; i++)
+            {
+                var item = itemList[i];
+                progress?.Report((i + 1, total, item.FileName));
+                string imgPath = item.FullPath ?? item.FileName;
+                if (!File.Exists(imgPath)) continue;
+
+                // 1. 读取图片
+                byte[] imageBytes = await Task.Run(() => File.ReadAllBytes(imgPath));
+                BitmapSource src = null;
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    using (var ms = new MemoryStream(imageBytes))
+                    {
+                        var bmp = new BitmapImage();
+                        bmp.BeginInit();
+                        bmp.CacheOption = BitmapCacheOption.OnLoad;
+                        bmp.StreamSource = ms;
+                        bmp.EndInit();
+                        bmp.Freeze();
+                        src = bmp;
+                    }
+                });
+
+                // 2. 旋转/翻转/灰度
+                int rot = previewRotation;
+                bool flip = previewFlip;
+                bool isGray = grayScaleCheckBox.IsChecked == true;
+                if (flip)
+                {
+                    if (rot == 90) rot = 270;
+                    else if (rot == 270) rot = 90;
+                }
+                switch (rot)
+                {
+                    case 90: src = await Rotate90(src); break;
+                    case 180: src = await Rotate180(src); break;
+                    case 270: src = await Rotate270(src); break;
+                }
+                if (flip) src = await FlipHorizontal(src);
+                if (isGray) src = ToGrayScale(src);
+                if (src != null && !src.IsFrozen) src.Freeze();
+
+                // 3. 提取像素
+                int width = src.PixelWidth, height = src.PixelHeight, stride = width * 4;
+                byte[] pixels = new byte[height * stride];
+                src.CopyPixels(pixels, stride, 0);
+
+                // 4. 生成色板
+                var options = new ClusteriseOptions
+                {
+                    ColorCount = colorCount,
+                    Method = method,
+                    Src = src,
+                    KMeansThreshold = kmeansThreshold,
+                    KMeansMaxIterations = kmeansMaxIterations,
+                    KMeansPlusPlusMaxSamples = kmeansPlusPlusMaxSamples,
+                    KMeansPlusPlusSeed = kmeansPlusPlusSeed,
+                    OctreeMaxLevel = octreeMaxLevel,
+                    OctreeMaxSamples = octreeMaxSamples,
+                    VarianceSplitMaxSamples = varianceSplitMaxSamples,
+                    PcaPowerIterations = pcaPowerIterations,
+                    PcaMaxSamples = pcaMaxSamples,
+                    WeightedMaxMinIters = weightedMaxMinIters,
+                    WeightedMaxMinMaxSamples = weightedMaxMinMaxSamples,
+                    NativeKMeansIterations = nativeKMeansIterations,
+                    NativeKMeansRate = nativeKMeansRate,
+                    MeanShiftBandwidth = meanShiftBandwidth,
+                    MeanShiftMaxIter = meanShiftMaxIter,
+                    MeanShiftMaxSamples = meanShiftMaxSamples,
+                    DbscanEpsilon = dbscanEpsilon,
+                    DbscanMinPts = dbscanMinPts,
+                    DbscanMaxSamples = dbscanMaxSamples,
+                    GmmMaxIter = gmmMaxIter,
+                    GmmTol = gmmTol,
+                    GmmMaxSamples = gmmMaxSamples,
+                    HierarchicalMaxSamples = hierarchicalMaxSamples,
+                    HierarchicalLinkage = hierarchicalLinkage,
+                    HierarchicalDistanceType = hierarchicalDistanceType,
+                    SpectralMaxSamples = spectralMaxSamples,
+                    SpectralSigma = spectralSigma,
+                    SpectralKMeansIters = spectralKMeansIters,
+                    LabKMeansMaxIterations = labKMeansMaxIterations,
+                    LabKMeansThreshold = labKMeansThreshold,
+                    FloydBaseMethod = (method == Clusterisation.PaletteClusterMethod.FloydSteinbergDither) ? floydBaseMethod : floydBaseMethod,
+                    FloydDitherStrength = floydDitherStrength,
+                    FloydSerpentine = floydSerpentine,
+                    OrderedDitherStrength = orderedDitherStrength,
+                    OrderedDitherMatrixSize = orderedDitherMatrixSize,
+                    OpticsEpsilon = opticsEpsilon,
+                    OpticsMinPts = opticsMinPts,
+                    OpticsMaxSamples = opticsMaxSamples,
+                    BitDepth = fixedBitDepth,
+                    UseGrayFixedPalette = useGrayFixedPalette,
+                };
+
+                double lastChange;
+                byte[] ditheredPixels;
+                var palette = Clusterisation.ClusteriseByMethod(
+                    pixels, options, out lastChange, out ditheredPixels, null);
+
+                // 5. 生成音符
+                var convert = new ConversionProcess(
+                    palette,
+                    pixels,
+                    width * 4,
+                    firstKey,
+                    lastKey + 1,
+                    noteLengthModeValue == NoteLengthMode.SplitToGrid,
+                    noteLengthModeValue != NoteLengthMode.Unlimited ? noteSplitLengthValue : 0,
+                    targetHeight,
+                    resizeAlgorithmValue,
+                    keyList,
+                    whiteKeyModeValue == WhiteKeyMode.WhiteKeysFixed,
+                    whiteKeyModeValue == WhiteKeyMode.BlackKeysFixed,
+                    whiteKeyModeValue == WhiteKeyMode.WhiteKeysClipped,
+                    whiteKeyModeValue == WhiteKeyMode.BlackKeysClipped
+                );
+                convert.EffectiveWidth = effectiveWidth;
+
+                await convert.RunProcessAsync(null);
+
+                processList.Add(convert);
+            }
+            bool useColorEvents = (bool)genColorEventsCheck.IsChecked;
+            // 6. 写MIDI（多图片首尾相连，直接用新版WriteMidi）
+            await Task.Run(() =>
+            {
+                ConversionProcess.WriteMidi(
+                    outputMidiPath,
+                    processList,
+                    ticksPerPixelValue,
+                    midiPPQValue,
+                    startOffsetValue,
+                    midiBPMValue,
+                    useColorEvents
+                );
+            });
         }
     }
 }
