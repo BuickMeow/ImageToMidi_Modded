@@ -1,0 +1,920 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="RawMidiSelect" xml:space="preserve">
+    <value>Set Colors</value>
+    <comment>Setting colors manually</comment>
+  </data>
+  <data name="ColorEventsSelect" xml:space="preserve">
+    <value>Auto Colors</value>
+    <comment>Setting colors automatically</comment>
+  </data>
+  <data name="Title" xml:space="preserve">
+    <value>Image To MIDI Modded v1.4.5</value>
+    <comment>Name of the program</comment>
+  </data>
+  <data name="SettingsSelect" xml:space="preserve">
+    <value>Settings</value>
+    <comment>Settings panel</comment>
+  </data>
+  <data name="SaveMidi" xml:space="preserve">
+    <value>Export MIDI</value>
+    <comment>Create the MIDI file</comment>
+  </data>
+  <data name="NL_Unlimited" xml:space="preserve">
+    <value>Unlimited</value>
+    <comment>Infinite note length</comment>
+  </data>
+  <data name="NL_FlowWithColor" xml:space="preserve">
+    <value>Start of the Notes</value>
+    <comment>Flow with color</comment>
+  </data>
+  <data name="NL_SplitToGrid" xml:space="preserve">
+    <value>Start of the Image</value>
+    <comment>Split To Grid</comment>
+  </data>
+  <data name="KeyRange" xml:space="preserve">
+    <value>Key Range</value>
+    <comment>Such as 0-127</comment>
+  </data>
+  <data name="PreviewTip" xml:space="preserve">
+    <value>Please Wait...</value>
+    <comment>Be patient</comment>
+  </data>
+  <data name="ColPickerTip" xml:space="preserve">
+    <value>Click the image on the left or type the hex below to pick a color</value>
+    <comment>How to pick a color</comment>
+  </data>
+  <data name="SetHexButton" xml:space="preserve">
+    <value>Set</value>
+    <comment>Click to set a hex color</comment>
+  </data>
+  <data name="ErrorTextBlock" xml:space="preserve">
+    <value>Invalid hex RGB color</value>
+    <comment>Must be a 6-digit hex number</comment>
+  </data>
+  <data name="ColorCount" xml:space="preserve">
+    <value>Color Count</value>
+    <comment>16 colors each line</comment>
+  </data>
+  <data name="ClusteringMethod" xml:space="preserve">
+    <value>Clustering Method</value>
+    <comment>Color palette clustering algorithm</comment>
+  </data>
+  <data name="ImagePreviewing" xml:space="preserve">
+    <value>Image Previewing</value>
+    <comment>Settings about image previewing</comment>
+  </data>
+  <data name="UseGrayscaleImage" xml:space="preserve">
+    <value>Use Grayscale Image</value>
+    <comment>Generate grayscale images for clustering</comment>
+  </data>
+  <data name="VectorImagePreviewWidth" xml:space="preserve">
+    <value>Vector Image Preview Width</value>
+    <comment>The height changes according to the image aspect ratio</comment>
+  </data>
+  <data name="MidiPreviewing" xml:space="preserve">
+    <value>MIDI Previewing</value>
+    <comment>Settings about MIDI previewing</comment>
+  </data>
+  <data name="ImageHeight" xml:space="preserve">
+    <value>Image Height</value>
+    <comment>Genimage Height</comment>
+  </data>
+  <data name="ColorAllocation" xml:space="preserve">
+    <value>Color Allocation</value>
+    <comment>Color allocation algorithm</comment>
+  </data>
+  <data name="InterpolationMethod" xml:space="preserve">
+    <value>Interpolation Method</value>
+    <comment>Interpolation algorithm</comment>
+  </data>
+  <data name="MidiOutput" xml:space="preserve">
+    <value>MIDI Output</value>
+    <comment>Settings about MIDI output</comment>
+  </data>
+  <data name="GenColorEvents" xml:space="preserve">
+    <value>Generate Color Events</value>
+    <comment>Color events!</comment>
+  </data>
+  <data name="ColorSeed" xml:space="preserve">
+    <value>Preview Color Seed</value>
+    <comment>Range 1-254</comment>
+  </data>
+  <data name="LimitedLength" xml:space="preserve">
+    <value>Limited Note Length</value>
+    <comment>A switch</comment>
+  </data>
+  <data name="MidiBpm" xml:space="preserve">
+    <value>MIDI BPM</value>
+    <comment>AKA Tempo</comment>
+  </data>
+  <data name="StartOffset" xml:space="preserve">
+    <value>Start Offset</value>
+    <comment>In Gates</comment>
+  </data>
+  <data name="MidiPpq" xml:space="preserve">
+    <value>MIDI PPQ</value>
+    <comment>PPQ</comment>
+  </data>
+  <data name="TicksPerPixel" xml:space="preserve">
+    <value>Ticks per Pixel</value>
+    <comment>In Gates</comment>
+  </data>
+  <data name="HM_SameAsWidth" xml:space="preserve">
+    <value>Same As Width</value>
+    <comment>Square</comment>
+  </data>
+  <data name="HM_OriginalHeight" xml:space="preserve">
+    <value>Original Pixel Height</value>
+    <comment>Original Pixel Height</comment>
+  </data>
+  <data name="HM_CustomHeight" xml:space="preserve">
+    <value>Custom Height</value>
+    <comment>Enter a number</comment>
+  </data>
+  <data name="HM_OriginalAspectRatio" xml:space="preserve">
+    <value>Original Aspect Ratio</value>
+    <comment>Keep the ratio of original image</comment>
+  </data>
+  <data name="CA_RGB" xml:space="preserve">
+    <value>RGB</value>
+  </data>
+  <data name="CP_NoColorSelected" xml:space="preserve">
+    <value>No Color Selected</value>
+  </data>
+  <data name="CA_HSV" xml:space="preserve">
+    <value>HSV</value>
+  </data>
+  <data name="CA_HSL" xml:space="preserve">
+    <value>HSL</value>
+  </data>
+  <data name="CA_LAB" xml:space="preserve">
+    <value>LAB</value>
+  </data>
+  <data name="B_Title" xml:space="preserve">
+    <value>Batch Processing</value>
+  </data>
+  <data name="B_StartingFFmpeg" xml:space="preserve">
+    <value>Starting FFmpeg...</value>
+  </data>
+  <data name="B_FFmpegCompleted" xml:space="preserve">
+    <value>FFmpeg Exporting Complete</value>
+  </data>
+  <data name="B_FileFormat" xml:space="preserve">
+    <value>Image/Video</value>
+  </data>
+  <data name="B_FolderFormat" xml:space="preserve">
+    <value>Folder</value>
+    <comment>Shows in the batch sheet</comment>
+  </data>
+  <data name="B_Back" xml:space="preserve">
+    <value>Back..</value>
+    <comment>Shows in the batch sheet</comment>
+  </data>
+  <data name="B_ConvertingMidi" xml:space="preserve">
+    <value>Converting to MIDI:</value>
+    <comment>Process showing</comment>
+  </data>
+  <data name="B_MergeCompleted" xml:space="preserve">
+    <value>Merge Completed</value>
+    <comment>Process showing</comment>
+  </data>
+  <data name="B_ExtractingVideoFrames" xml:space="preserve">
+    <value>Extracting Video Frames:</value>
+    <comment>Process showing</comment>
+  </data>
+  <data name="B_AddImage" xml:space="preserve">
+    <value>Adding Image:</value>
+    <comment>Process showing</comment>
+  </data>
+  <data name="B_AllFiles" xml:space="preserve">
+    <value>All Files</value>
+  </data>
+  <data name="B_ExportAllMidi" xml:space="preserve">
+    <value>Export All MIDIs</value>
+    <comment>Export</comment>
+  </data>
+  <data name="B_MergeMidi" xml:space="preserve">
+    <value>Merge Into One MIDI</value>
+    <comment>Export (merge)</comment>
+  </data>
+  <data name="BDG_Index" xml:space="preserve">
+    <value>Index</value>
+  </data>
+  <data name="BDG_Resolution" xml:space="preserve">
+    <value>Resolution</value>
+  </data>
+  <data name="BDG_Format" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="BDG_FileName" xml:space="preserve">
+    <value>Filename</value>
+  </data>
+  <data name="CS_OpenFilter" xml:space="preserve">
+    <value>Bitmap/Vector Image</value>
+    <comment>*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.svg;*.eps;*.ai;*.pdf</comment>
+  </data>
+  <data name="CS_TrackHex" xml:space="preserve">
+    <value>HEX:</value>
+    <comment>Per Track</comment>
+  </data>
+  <data name="CS_TrackNoteCount" xml:space="preserve">
+    <value>Note Count:</value>
+    <comment>Per Track</comment>
+  </data>
+  <data name="CS_GeneratingPalette" xml:space="preserve">
+    <value>Generating Palette...</value>
+  </data>
+  <data name="CS_GeneratingImage" xml:space="preserve">
+    <value>Generating Image...</value>
+  </data>
+  <data name="CS_GeneratingNotes" xml:space="preserve">
+    <value>Generating Notes...</value>
+  </data>
+  <data name="CS_ExportingMidi" xml:space="preserve">
+    <value>Exporting MIDI...</value>
+  </data>
+  <data name="CS_ExportNotecount1" xml:space="preserve">
+    <value>Export MIDI (</value>
+  </data>
+  <data name="CS_ExportNotecount2" xml:space="preserve">
+    <value>Notes )</value>
+  </data>
+  <data name="CS_ExportingFolder" xml:space="preserve">
+    <value>Export successful! Click to open the folder</value>
+    <comment>Click To Open The Folder</comment>
+  </data>
+  <data name="CS_ExportingCompleted" xml:space="preserve">
+    <value>Export successful!</value>
+  </data>
+  <data name="CS_PleaseWait" xml:space="preserve">
+    <value>Please Wait...</value>
+  </data>
+  <data name="CS_MidiFile" xml:space="preserve">
+    <value>MIDI File</value>
+    <comment>Save as .mid file</comment>
+  </data>
+  <data name="CS_LoadingFile" xml:space="preserve">
+    <value>Loading File...</value>
+  </data>
+  <data name="CS_DecodingCompleted" xml:space="preserve">
+    <value>Image Decoding Completed</value>
+  </data>
+  <data name="CS_ThumbGenCompleted" xml:space="preserve">
+    <value>Thumbnail Generation Completed</value>
+  </data>
+  <data name="CS_GeneratingLandscape" xml:space="preserve">
+    <value>Generating Landscape Thumbnails</value>
+  </data>
+  <data name="CS_GeneratingPortrait" xml:space="preserve">
+    <value>Generating Portrait Thumbnails</value>
+  </data>
+  <data name="CS_SVGAnalyzing" xml:space="preserve">
+    <value>1/3 Analyzing SVG...</value>
+  </data>
+  <data name="CS_GSBoundingBox" xml:space="preserve">
+    <value>1/4 Analyzing BoundingBox</value>
+  </data>
+  <data name="CS_GSRendering" xml:space="preserve">
+    <value>2/4 Rendering With Ghostscript...</value>
+  </data>
+  <data name="CS_GSScaling" xml:space="preserve">
+    <value>4/4 Scaling Completed</value>
+  </data>
+  <data name="Toolbox" xml:space="preserve">
+    <value>Toolbox</value>
+  </data>
+  <data name="M_NoFilesToExport" xml:space="preserve">
+    <value>No files to export.</value>
+  </data>
+  <data name="CS_GSReading" xml:space="preserve">
+    <value>3/4 Reading PNG Results...</value>
+  </data>
+  <data name="CS_SVGRendering" xml:space="preserve">
+    <value>2/3 Rendering SVG...</value>
+  </data>
+  <data name="CS_SVGCompleted" xml:space="preserve">
+    <value>SVG Thumbnail Generation Completed</value>
+  </data>
+  <data name="CS_SVGConverting" xml:space="preserve">
+    <value>3/3 Converting To WPF Bitmap...</value>
+  </data>
+  <data name="BDG_FrameCount" xml:space="preserve">
+    <value>Frames</value>
+  </data>
+  <data name="CA_CIEDE2000" xml:space="preserve">
+    <value>CIEDE2000</value>
+  </data>
+  <data name="RM_AreaResampling" xml:space="preserve">
+    <value>Area Resampling</value>
+  </data>
+  <data name="RM_Bilinear" xml:space="preserve">
+    <value>Bilinear</value>
+  </data>
+  <data name="RM_Hermite" xml:space="preserve">
+    <value>Hermite</value>
+  </data>
+  <data name="RM_NearestNeighbor" xml:space="preserve">
+    <value>Nearest Neighbor</value>
+  </data>
+  <data name="RM_Mitchell" xml:space="preserve">
+    <value>Mitchell</value>
+  </data>
+  <data name="RM_Gaussian" xml:space="preserve">
+    <value>Gaussian</value>
+  </data>
+  <data name="RM_Lanczos" xml:space="preserve">
+    <value>Lanczos</value>
+  </data>
+  <data name="RM_Bicubic" xml:space="preserve">
+    <value>Bicubic</value>
+  </data>
+  <data name="RM_BoxFilter" xml:space="preserve">
+    <value>Box Filter</value>
+  </data>
+  <data name="RM_ModePooling" xml:space="preserve">
+    <value>ModePooling</value>
+  </data>
+  <data name="RM_IntegralImage" xml:space="preserve">
+    <value>Integal Image</value>
+  </data>
+  <data name="CS_Keys" xml:space="preserve">
+    <value>Keys</value>
+    <comment>128 keys? White or black keys?</comment>
+  </data>
+  <data name="CS_KeysBlackFilled" xml:space="preserve">
+    <value>Black(Filled)</value>
+    <comment>128 keys? White or black keys?</comment>
+  </data>
+  <data name="CS_KeysWhiteFilled" xml:space="preserve">
+    <value>White(Filled)</value>
+    <comment>128 keys? White or black keys?</comment>
+  </data>
+  <data name="CS_KeysBlackFixed" xml:space="preserve">
+    <value>Black(Fixed)</value>
+    <comment>128 keys? White or black keys?</comment>
+  </data>
+  <data name="CS_KeysWhiteClipped" xml:space="preserve">
+    <value>White(Clipped)</value>
+    <comment>128 keys? White or black keys?</comment>
+  </data>
+  <data name="CS_KeysWhiteFixed" xml:space="preserve">
+    <value>White(Fixed)</value>
+    <comment>128 keys? White or black keys?</comment>
+  </data>
+  <data name="CS_KeysBlackClipped" xml:space="preserve">
+    <value>Black(Clipped)</value>
+    <comment>128 keys? White or black keys?</comment>
+  </data>
+	<!-- ClusterMethodComboBox Algorithm Names -->
+	<data name="CM_KMeansPP_Default" xml:space="preserve">
+    <value>KMeans++ (Default)</value>
+  </data>
+	<data name="CM_WpfMedianCut" xml:space="preserve">
+    <value>WPF Median Cut (Native)</value>
+  </data>
+	<data name="CM_WpfKMeans" xml:space="preserve">
+    <value>WPF + K-Means</value>
+  </data>
+	<data name="CM_KMPlusKM_Recommended" xml:space="preserve">
+    <value>KM++ &amp; KM (Recommended)</value>
+  </data>
+	<data name="CM_Popularity" xml:space="preserve">
+    <value>Frequency Method</value>
+  </data>
+	<data name="CM_Octree" xml:space="preserve">
+    <value>Octree</value>
+  </data>
+	<data name="CM_VarianceSplit" xml:space="preserve">
+    <value>Maximum Variance Split</value>
+  </data>
+	<data name="CM_PCA" xml:space="preserve">
+    <value>PCA Principal Component (Good for few colors)</value>
+  </data>
+	<data name="CM_MinMaxKM" xml:space="preserve">
+    <value>MinMax &amp; KM++</value>
+  </data>
+	<data name="CM_NativeKM" xml:space="preserve">
+    <value>Arduano Native KM</value>
+  </data>
+	<data name="CM_MeanShift" xml:space="preserve">
+    <value>MeanShift (Good for few colors)</value>
+  </data>
+	<data name="CM_DBSCAN" xml:space="preserve">
+    <value>DBSCAN (Good for few colors)</value>
+  </data>
+	<data name="CM_GMM" xml:space="preserve">
+    <value>Gaussian Mixture</value>
+  </data>
+	<data name="CM_Hierarchical" xml:space="preserve">
+    <value>Hierarchical Clustering</value>
+  </data>
+	<data name="CM_Spectral" xml:space="preserve">
+    <value>Spectral Clustering</value>
+  </data>
+	<data name="CM_LabKMeans" xml:space="preserve">
+    <value>Lab KMeans</value>
+  </data>
+	<data name="CM_FloydSteinberg" xml:space="preserve">
+    <value>Floyd–Steinberg Dithering</value>
+  </data>
+	<data name="CM_OrderedDither" xml:space="preserve">
+    <value>Ordered Dithering</value>
+  </data>
+	<data name="CM_OPTICS" xml:space="preserve">
+    <value>OPTICS (Good for few colors)</value>
+  </data>
+	<data name="CM_FixedBitPalette" xml:space="preserve">
+    <value>Fixed Palette</value>
+  </data>
+
+	<!-- ClusterMethodComboBox Algorithm ToolTips -->
+	<data name="CM_KMeansPP_ToolTip" xml:space="preserve">
+    <value>KMeans++ clustering with improved initial point selection for more stable clustering results.</value>
+  </data>
+	<data name="CM_WpfMedianCut_ToolTip" xml:space="preserve">
+    <value>WPF's built-in median cut algorithm, fast and suitable for simple scenarios.</value>
+  </data>
+	<data name="CM_WpfKMeans_ToolTip" xml:space="preserve">
+    <value>[Has randomness] Uses WPF median cut first, then K-Means for refinement, balancing speed and quality.</value>
+  </data>
+	<data name="CM_KMPlusKM_Recommended_ToolTip" xml:space="preserve">
+    <value>[Has randomness] KMeans++ initialization + KMeans clustering, improves clustering quality.</value>
+  </data>
+	<data name="CM_Popularity_ToolTip" xml:space="preserve">
+    <value>Selects dominant colors by frequency of appearance, simple and efficient.</value>
+  </data>
+	<data name="CM_Octree_ToolTip" xml:space="preserve">
+    <value>Octree space partitioning, suitable for images with sparse color distribution.</value>
+  </data>
+	<data name="CM_VarianceSplit_ToolTip" xml:space="preserve">
+    <value>Splits along the direction of maximum color variance, highlighting dominant colors.</value>
+  </data>
+	<data name="CM_PCA_ToolTip" xml:space="preserve">
+    <value>Principal component analysis, extracts the main direction of color distribution.</value>
+  </data>
+	<data name="CM_MinMaxKM_ToolTip" xml:space="preserve">
+    <value>Min-max distance method combined with KMeans++, improves clustering diversity.</value>
+  </data>
+	<data name="CM_NativeKM_ToolTip" xml:space="preserve">
+    <value>Arduano's native KMeans algorithm, the same algorithm used in the original ImageToMidi.</value>
+  </data>
+	<data name="CM_MeanShift_ToolTip" xml:space="preserve">
+    <value>Mean shift clustering, no need to specify cluster count, suitable for complex distributions.</value>
+  </data>
+	<data name="CM_DBSCAN_ToolTip" xml:space="preserve">
+    <value>Density-based clustering that can discover arbitrarily shaped clusters.</value>
+  </data>
+	<data name="CM_GMM_ToolTip" xml:space="preserve">
+    <value>Gaussian mixture model, suitable for images with multi-Gaussian color distributions.</value>
+  </data>
+	<data name="CM_Hierarchical_ToolTip" xml:space="preserve">
+    <value>Bottom-up cluster merging, forming hierarchical structures.</value>
+  </data>
+	<data name="CM_Spectral_ToolTip" xml:space="preserve">
+    <value>Graph theory-based clustering method, suitable for complex structures.</value>
+  </data>
+	<data name="CM_LabKMeans_ToolTip" xml:space="preserve">
+    <value>KMeans clustering in Lab color space, more consistent with human visual perception.</value>
+  </data>
+	<data name="CM_FloydSteinberg_ToolTip" xml:space="preserve">
+    <value>Classic error diffusion dithering algorithm, improves color representation.</value>
+  </data>
+	<data name="CM_OrderedDither_ToolTip" xml:space="preserve">
+    <value>Ordered dithering using Bayer matrix, suitable for low color depth displays.</value>
+  </data>
+	<data name="CM_OPTICS_ToolTip" xml:space="preserve">
+    <value>Density-based clustering algorithm that can discover cluster structures of different densities.</value>
+  </data>
+	<data name="CM_FixedBitPalette_ToolTip" xml:space="preserve">
+    <value>Uses fixed palette, up to 256 colors.</value>
+  </data>
+
+	<!-- ParamPanel Parameter Names -->
+	<data name="PP_MaxSamples" xml:space="preserve">
+    <value>Max Samples (maxSamples)</value>
+  </data>
+	<data name="PP_Seed" xml:space="preserve">
+    <value>Random Seed (seed)</value>
+  </data>
+	<data name="PP_MaxIterations" xml:space="preserve">
+    <value>Max Iterations (maxIterations)</value>
+  </data>
+	<data name="PP_Threshold" xml:space="preserve">
+    <value>Convergence Threshold (threshold)</value>
+  </data>
+	<data name="PP_MaxLevel" xml:space="preserve">
+    <value>Max Level (maxLevel)</value>
+  </data>
+	<data name="PP_PowerIterations" xml:space="preserve">
+    <value>Power Iterations (power iterations)</value>
+  </data>
+	<data name="PP_KMeansIters" xml:space="preserve">
+    <value>KMeans Iterations (kmeansIters)</value>
+  </data>
+	<data name="PP_Iterations" xml:space="preserve">
+    <value>Iterations (iterations)</value>
+  </data>
+	<data name="PP_Rate" xml:space="preserve">
+    <value>Convergence Rate (rate)</value>
+  </data>
+	<data name="PP_Bandwidth" xml:space="preserve">
+    <value>Bandwidth (bandwidth)</value>
+  </data>
+	<data name="PP_MaxIter" xml:space="preserve">
+    <value>Max Iterations (maxIter)</value>
+  </data>
+	<data name="PP_Epsilon" xml:space="preserve">
+    <value>Neighborhood Radius (epsilon)</value>
+  </data>
+	<data name="PP_MinPts" xml:space="preserve">
+    <value>Min Points (minPts)</value>
+  </data>
+	<data name="PP_Tol" xml:space="preserve">
+    <value>Convergence Threshold (tol)</value>
+  </data>
+	<data name="PP_Linkage" xml:space="preserve">
+    <value>Linkage Method (linkage)</value>
+  </data>
+	<data name="PP_Distance" xml:space="preserve">
+    <value>Distance Type (distance)</value>
+  </data>
+	<data name="PP_Sigma" xml:space="preserve">
+    <value>Gaussian Kernel σ (sigma)</value>
+  </data>
+	<data name="PP_KMeansIters2" xml:space="preserve">
+    <value>KMeans Iterations</value>
+  </data>
+	<data name="PP_BitDepth" xml:space="preserve">
+    <value>Bit Depth (bit depth)</value>
+  </data>
+	<data name="PP_BaseMethod" xml:space="preserve">
+    <value>Base Palette Algorithm</value>
+  </data>
+	<data name="PP_DitherStrength" xml:space="preserve">
+    <value>Dither Strength (0.0~2.0)</value>
+  </data>
+	<data name="PP_MatrixSize" xml:space="preserve">
+    <value>Bayer Matrix Size</value>
+  </data>
+	<data name="PP_Serpentine" xml:space="preserve">
+    <value>Serpentine Scan</value>
+  </data>
+	<data name="PP_GrayPalette" xml:space="preserve">
+    <value>Grayscale Palette</value>
+  </data>
+
+	<!-- ParamPanel ComboBoxItem Options -->
+	<data name="PP_SingleLinkage" xml:space="preserve">
+    <value>Single Linkage</value>
+  </data>
+	<data name="PP_CompleteLinkage" xml:space="preserve">
+    <value>Complete Linkage</value>
+  </data>
+	<data name="PP_AverageLinkage" xml:space="preserve">
+    <value>Average Linkage</value>
+  </data>
+	<data name="PP_EuclideanDistance" xml:space="preserve">
+    <value>Euclidean Distance</value>
+  </data>
+	<data name="PP_ManhattanDistance" xml:space="preserve">
+    <value>Manhattan Distance</value>
+  </data>
+	<data name="PP_WpfMedianCut" xml:space="preserve">
+    <value>WPF Median Cut</value>
+  </data>
+	<data name="PP_KMeansPP" xml:space="preserve">
+    <value>KMeans++</value>
+  </data>
+	<data name="PP_WpfKMeans" xml:space="preserve">
+    <value>WPF+KMeans</value>
+  </data>
+	<data name="PP_PCA" xml:space="preserve">
+    <value>PCA Principal Component</value>
+  </data>
+	<data name="PP_DBSCAN" xml:space="preserve">
+    <value>DBSCAN</value>
+  </data>
+	<data name="PP_Size2x2" xml:space="preserve">
+    <value>2x2</value>
+  </data>
+	<data name="PP_Size4x4" xml:space="preserve">
+    <value>4x4</value>
+  </data>
+	<data name="PP_Size8x8" xml:space="preserve">
+    <value>8x8</value>
+  </data>
+	<!-- ParamPanel ToolTip Content -->
+	<!-- KMeans++ -->
+	<data name="PP_MaxSamples_ToolTip" xml:space="preserve">
+  <value>Maximum number of pixel samples for clustering. Integer. Recommended 20000~50000. Lower values are faster but less accurate, higher values are more accurate but slower.</value>
+</data>
+	<data name="PP_Seed_ToolTip" xml:space="preserve">
+  <value>Random seed for clustering initialization. Integer. 0 for automatic random, other values can reproduce results.</value>
+</data>
+
+	<!-- KMeans -->
+	<data name="PP_MaxIterations_ToolTip" xml:space="preserve">
+  <value>Maximum KMeans iterations. Integer. Recommended 50~200. Lower values may not converge, higher values are slower but more accurate.</value>
+</data>
+	<data name="PP_Threshold_ToolTip" xml:space="preserve">
+  <value>Convergence threshold for clustering. Decimal. Recommended 0.1~5. Lower values are more accurate but slower, higher values are faster but less precise.</value>
+</data>
+
+	<!-- Octree -->
+	<data name="PP_MaxLevel_ToolTip" xml:space="preserve">
+  <value>Maximum octree level. Integer. Recommended 6~8. Lower values are faster but with low color resolution, higher values are more detailed but slower.</value>
+</data>
+	<data name="PP_OctreeMaxSamples_ToolTip" xml:space="preserve">
+  <value>Maximum pixel samples for octree. Integer. Recommended 20000. Lower values are faster but less accurate, higher values are slower but more accurate.</value>
+</data>
+
+	<!-- VarianceSplit -->
+	<data name="PP_VarianceSplitMaxSamples_ToolTip" xml:space="preserve">
+  <value>Maximum number of pixel samples for clustering. Integer. Recommended 20000. Lower values are faster but less accurate, higher values are more accurate but slower.</value>
+</data>
+
+	<!-- PCA -->
+	<data name="PP_PowerIterations_ToolTip" xml:space="preserve">
+  <value>Number of power iterations for PCA principal component analysis. Integer. Recommended 10~30. Lower values are faster but less accurate principal components, higher values are more accurate but slower.</value>
+</data>
+	<data name="PP_PcaMaxSamples_ToolTip" xml:space="preserve">
+  <value>Maximum pixel samples for PCA. Integer. Recommended 20000. Lower values are faster but less accurate, higher values are slower but more accurate.</value>
+</data>
+
+	<!-- WeightedMaxMin -->
+	<data name="PP_KMeansIters_ToolTip" xml:space="preserve">
+  <value>Number of KMeans clustering iterations. Integer. Recommended 3~10. Lower values are faster but less accurate, higher values are more accurate but slower.</value>
+</data>
+	<data name="PP_WeightedMaxMinMaxSamples_ToolTip" xml:space="preserve">
+  <value>Maximum number of pixel samples for clustering. Integer. Recommended 20000. Lower values are faster but less accurate, higher values are slower but more accurate.</value>
+</data>
+
+	<!-- NativeKMeans -->
+	<data name="PP_Iterations_ToolTip" xml:space="preserve">
+  <value>Number of KMeans clustering iterations. Integer. Recommended 5~20. Lower values are faster but less accurate, higher values are more accurate but slower.</value>
+</data>
+	<data name="PP_Rate_ToolTip" xml:space="preserve">
+  <value>Convergence rate for KMeans clustering. Decimal. Recommended 0.1~0.5. Lower values converge slower but more stable, higher values converge faster but may be unstable.</value>
+</data>
+
+	<!-- MeanShift -->
+	<data name="PP_Bandwidth_ToolTip" xml:space="preserve">
+  <value>Bandwidth parameter for mean shift. Decimal. Recommended 16~64. Lower values produce finer clustering, higher values produce coarser clustering.</value>
+</data>
+	<data name="PP_MeanShiftMaxIter_ToolTip" xml:space="preserve">
+  <value>Maximum iterations for mean shift. Integer. Recommended 5~20. Lower values may not converge, higher values are slower but more accurate.</value>
+</data>
+	<data name="PP_MeanShiftMaxSamples_ToolTip" xml:space="preserve">
+  <value>Maximum number of pixel samples for clustering. Integer. Recommended 10000. Lower values are faster but less accurate, higher values are slower but more accurate.</value>
+</data>
+
+	<!-- DBSCAN -->
+	<data name="PP_Epsilon_ToolTip" xml:space="preserve">
+  <value>Neighborhood radius for DBSCAN clustering. Decimal. Recommended 1~10. Lower values produce finer clustering, higher values produce coarser clustering.</value>
+</data>
+	<data name="PP_MinPts_ToolTip" xml:space="preserve">
+  <value>Minimum points for DBSCAN clustering. Integer. Recommended 3~10. Lower values make it easier to form small clusters, higher values make it harder to form clusters.</value>
+</data>
+	<data name="PP_DBSCANMaxSamples_ToolTip" xml:space="preserve">
+  <value>Maximum number of pixel samples for clustering. Integer. Recommended 2000. Lower values are faster but less accurate, higher values are slower but more accurate.</value>
+</data>
+
+	<!-- GMM -->
+	<data name="PP_GMMMaxIter_ToolTip" xml:space="preserve">
+  <value>Maximum iterations for Gaussian mixture model. Integer. Recommended 10~50. Lower values are faster but may not converge, higher values are more accurate but slower.</value>
+</data>
+	<data name="PP_Tol_ToolTip" xml:space="preserve">
+  <value>Convergence threshold for Gaussian mixture model. Decimal. Recommended 0.1~5. Lower values are more accurate but slower, higher values are faster but less precise.</value>
+</data>
+	<data name="PP_GMMMaxSamples_ToolTip" xml:space="preserve">
+  <value>Maximum number of pixel samples for clustering. Integer. Recommended 2000. Lower values are faster but less accurate, higher values are slower but more accurate.</value>
+</data>
+
+	<!-- Hierarchical -->
+	<data name="PP_HierarchicalMaxSamples_ToolTip" xml:space="preserve">
+  <value>Maximum pixel samples for hierarchical clustering. Integer. Recommended 350. Lower values are faster but less accurate, higher values are slower but more accurate.</value>
+</data>
+	<data name="PP_Linkage_ToolTip" xml:space="preserve">
+  <value>Linkage method for hierarchical clustering. Single linkage: prone to long chains, noise sensitive; Complete linkage: compact clusters, noise resistant; Average linkage: compromise.</value>
+</data>
+	<data name="PP_Distance_ToolTip" xml:space="preserve">
+  <value>Distance metric for clustering. Euclidean distance: commonly used, suitable for continuous data; Manhattan distance: suitable for discrete data.</value>
+</data>
+	<data name="PP_SingleLinkage_ToolTip" xml:space="preserve">
+  <value>Merges closest clusters each time, prone to long chains, noise sensitive.</value>
+</data>
+	<data name="PP_CompleteLinkage_ToolTip" xml:space="preserve">
+  <value>Merges farthest clusters each time, produces compact clusters, noise resistant.</value>
+</data>
+	<data name="PP_AverageLinkage_ToolTip" xml:space="preserve">
+  <value>Merges clusters with closest average distance each time, compromise solution.</value>
+</data>
+	<data name="PP_EuclideanDistance_ToolTip" xml:space="preserve">
+  <value>Commonly used distance, suitable for continuous data.</value>
+</data>
+	<data name="PP_ManhattanDistance_ToolTip" xml:space="preserve">
+  <value>Suitable for discrete data.</value>
+</data>
+
+	<!-- Spectral -->
+	<data name="PP_SpectralMaxSamples_ToolTip" xml:space="preserve">
+  <value>Maximum pixel samples for spectral clustering. Integer. Recommended 2000. Lower values are faster but less accurate, higher values are slower but more accurate.</value>
+</data>
+	<data name="PP_Sigma_ToolTip" xml:space="preserve">
+  <value>Gaussian kernel σ for spectral clustering. Decimal. Recommended 16~64. Lower values produce finer clustering, higher values produce coarser clustering.</value>
+</data>
+	<data name="PP_SpectralKMeansIters_ToolTip" xml:space="preserve">
+  <value>KMeans iterations after spectral clustering. Integer. Recommended 5~20. Lower values are faster but less accurate, higher values are slower but more accurate.</value>
+</data>
+
+	<!-- Lab KMeans -->
+	<data name="PP_LabKMeansMaxIterations_ToolTip" xml:space="preserve">
+  <value>Maximum KMeans iterations. Integer. Recommended 50~200. Lower values may not converge, higher values are slower but more accurate.</value>
+</data>
+	<data name="PP_LabKMeansThreshold_ToolTip" xml:space="preserve">
+  <value>Convergence threshold for clustering. Decimal. Recommended 0.1~5. Lower values are more accurate but slower, higher values are faster but less precise.</value>
+</data>
+
+	<!-- Floyd-Steinberg -->
+	<data name="PP_FloydBaseMethod_ToolTip" xml:space="preserve">
+  <value>Select the algorithm for generating the base palette. Different algorithms affect color distribution and speed.</value>
+</data>
+	<data name="PP_FloydDitherStrength_ToolTip" xml:space="preserve">
+  <value>Dither error diffusion strength. Decimal. Recommended 1.0. Lower values produce weaker dithering, higher values produce stronger dithering, too high may cause excessive noise.</value>
+</data>
+	<data name="PP_FloydSerpentine_ToolTip" xml:space="preserve">
+  <value>When enabled, dithering scan direction alternates each row, reducing stripe artifacts. Recommended to enable.</value>
+</data>
+	<data name="PP_FloydWpfMedianCut_ToolTip" xml:space="preserve">
+  <value>Fast, suitable for simple images.</value>
+</data>
+	<data name="PP_FloydKMeansPP_ToolTip" xml:space="preserve">
+  <value>Better clustering results, slightly slower speed.</value>
+</data>
+	<data name="PP_FloydWpfKMeans_ToolTip" xml:space="preserve">
+  <value>Balances speed and quality.</value>
+</data>
+	<data name="PP_FloydPCA_ToolTip" xml:space="preserve">
+  <value>Suitable for images with distinct dominant colors.</value>
+</data>
+	<data name="PP_FloydDBSCAN_ToolTip" xml:space="preserve">
+  <value>Suitable for complex color distributions.</value>
+</data>
+
+	<!-- OrderedDither -->
+	<data name="PP_OrderedDitherBaseMethod_ToolTip" xml:space="preserve">
+  <value>Select the algorithm for generating the base palette. Different algorithms affect color distribution and speed.</value>
+</data>
+	<data name="PP_OrderedDitherStrength_ToolTip" xml:space="preserve">
+  <value>Dither error diffusion strength. Decimal. Recommended 1.0. Lower values produce weaker dithering, higher values produce stronger dithering, too high may cause excessive noise.</value>
+</data>
+	<data name="PP_MatrixSize_ToolTip" xml:space="preserve">
+  <value>Size of Bayer matrix. 2x2: large dither grain, 4x4: commonly used, 8x8: fine grain but may lose details.</value>
+</data>
+	<data name="PP_Size2x2_ToolTip" xml:space="preserve">
+  <value>Large grain, suitable for special styles.</value>
+</data>
+	<data name="PP_Size4x4_ToolTip" xml:space="preserve">
+  <value>Commonly used, balances fineness and speed.</value>
+</data>
+	<data name="PP_Size8x8_ToolTip" xml:space="preserve">
+  <value>Fine grain but may lose details.</value>
+</data>
+
+	<!-- OPTICS -->
+	<data name="PP_OPTICSEpsilon_ToolTip" xml:space="preserve">
+  <value>Neighborhood radius for OPTICS clustering. Decimal. Recommended 8~64. Lower values produce finer clustering, higher values produce coarser clustering.</value>
+</data>
+	<data name="PP_OPTICSMinPts_ToolTip" xml:space="preserve">
+  <value>Minimum points for OPTICS clustering. Integer. Recommended 3~10. Lower values make it easier to form small clusters, higher values make it harder to form clusters.</value>
+</data>
+	<data name="PP_OPTICSMaxSamples_ToolTip" xml:space="preserve">
+  <value>Maximum number of pixel samples for clustering. Integer. Recommended 2000. Lower values are faster but less accurate, higher values are slower but more accurate.</value>
+</data>
+
+	<!-- FixedBitPalette -->
+	<data name="PP_BitDepth_ToolTip" xml:space="preserve">
+  <value>Overrides the color count setting above, generates a fixed bit depth palette. Color count is 2 to the power of bit depth.</value>
+</data>
+	<data name="PP_GrayPalette_ToolTip" xml:space="preserve">
+  <value>Color count is 2 to the power of bit depth, but each color is a grayscale value.</value>
+</data>
+</root>

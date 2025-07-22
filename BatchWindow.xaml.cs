@@ -58,7 +58,8 @@ namespace ImageToMidi
         // 1. 扩展支持的文件类型
         private static readonly string[] ImageExtensions = { ".png", ".jpg", ".jpeg", ".bmp", ".tiff" };
         private static readonly string[] DynamicImageExtensions = { ".gif", ".mp4", ".mov", ".avi", ".mkv", ".webm" };
-        private static readonly string[] AllSupportedExtensions = ImageExtensions.Concat(DynamicImageExtensions).ToArray();
+        private static readonly string[] VectorExtensions = { ".svg", ".eps", ".ai", ".pdf" }; // 新增
+        private static readonly string[] AllSupportedExtensions = ImageExtensions.Concat(DynamicImageExtensions).Concat(VectorExtensions).ToArray(); // 修改
 
         string tempDir = Path.Combine(Path.GetTempPath(), "ImageToMidiFrames", Guid.NewGuid().ToString());
 
@@ -75,6 +76,7 @@ namespace ImageToMidi
             _initHeight = this.Height;
 
             BatchDataGrid.PreviewKeyDown += BatchDataGrid_PreviewKeyDown;
+            SetExportButtonsEnabled(true);
         }
         protected override void OnClosing(CancelEventArgs e)
         {
@@ -162,6 +164,8 @@ namespace ImageToMidi
         {
             bool ffmpegChecked = false;
             bool ffmpegAvailable = false;
+            bool ghostscriptChecked = false;
+            bool ghostscriptAvailable = false;
 
             foreach (var file in files)
             {
@@ -170,7 +174,6 @@ namespace ImageToMidi
                     var ext = Path.GetExtension(file).ToLowerInvariant();
                     string format = ext.TrimStart('.').ToUpperInvariant();
                     int frameCount = 1;
-                    int width = 0, height = 0;
                     string resolution = "";
 
                     if (DynamicImageExtensions.Contains(ext))
@@ -183,7 +186,7 @@ namespace ImageToMidi
                         }
                         if (!ffmpegAvailable)
                         {
-                            MessageBox.Show("未检测到FFmpeg.exe，无法读取动态图/视频文件。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            MessageBox.Show("未检测到FFmpeg.exe，无法读取动态图/视频文件。\nFFmpeg.exe is required.", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                             continue;
                         }
 
@@ -204,14 +207,46 @@ namespace ImageToMidi
                     else if (ImageExtensions.Contains(ext))
                     {
                         var bitmap = new BitmapImage(new Uri(file));
-                        width = bitmap.PixelWidth;
-                        height = bitmap.PixelHeight;
+                        int width = bitmap.PixelWidth;
+                        int height = bitmap.PixelHeight;
                         resolution = $"{width}x{height}";
+
                         FileList.Add(new BatchFileItem
                         {
                             FileName = Path.GetFileName(file),
                             Format = format,
                             FrameCount = 1,
+                            Resolution = resolution,
+                            FullPath = file
+                        });
+                    }
+                    else if (VectorExtensions.Contains(ext)) // 新增矢量图处理
+                    {
+                        // 检查SVG支持或Ghostscript
+                        if ((ext == ".eps" || ext == ".ai" || ext == ".pdf"))
+                        {
+                            if (!ghostscriptChecked)
+                            {
+                                ghostscriptAvailable = IsGhostscriptAvailable();
+                                ghostscriptChecked = true;
+                            }
+                            if (!ghostscriptAvailable)
+                            {
+                                MessageBox.Show($"未检测到Ghostscript，无法读取{format}文件。\n请前往 www.ghostscript.com 下载并安装 Ghostscript。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                                continue;
+                            }
+                        }
+
+                        // 获取矢量图信息
+                        var vectorInfo = await GetVectorInfoAsync(file);
+                        frameCount = vectorInfo.frameCount;
+                        resolution = vectorInfo.resolution;
+
+                        FileList.Add(new BatchFileItem
+                        {
+                            FileName = Path.GetFileName(file),
+                            Format = format,
+                            FrameCount = frameCount,
                             Resolution = resolution,
                             FullPath = file
                         });
@@ -234,7 +269,7 @@ namespace ImageToMidi
             string exeDir = AppDomain.CurrentDomain.BaseDirectory;
             string ffprobePath = Path.Combine(exeDir, "ffprobe.exe");
             if (!File.Exists(ffprobePath))
-                throw new FileNotFoundException("未找到ffprobe.exe");
+                throw new FileNotFoundException("未找到ffprobe.exe\nffprobe.exe is required.");
 
             int frameCount = 0;
             string resolution = "";
@@ -267,7 +302,7 @@ namespace ImageToMidi
         {
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
-                Filter = "图片/视频文件|*.png;*.jpg;*.jpeg;*.bmp;*.tiff;*.gif;*.mp4;*.mov;*.avi;*.mkv;*.webm|所有文件|*.*",
+                Filter = $"{Languages.Strings.B_FileFormat}|*.png;*.jpg;*.jpeg;*.bmp;*.tiff;*.gif;*.mp4;*.mov;*.avi;*.mkv;*.webm;*.svg;*.eps;*.ai;*.pdf|{Languages.Strings.B_AllFiles}|*.*", // 修改
                 Multiselect = true
             };
             if (dlg.ShowDialog() == true)
@@ -292,7 +327,7 @@ namespace ImageToMidi
                 FileList.Add(new BatchFileItem
                 {
                     FileName = Path.GetFileName(folderPath),
-                    Format = "文件夹",
+                    Format = $"{Languages.Strings.B_FolderFormat}",
                     FrameCount = GetImageCountRecursive(folderPath),
                     Resolution = "",
                     FullPath = folderPath,
@@ -330,7 +365,6 @@ namespace ImageToMidi
                     // 回到上一级
                     if (folderStack.Count == 0)
                     {
-                        // 回到主列表
                         FileList.Clear();
                         foreach (var it in rootItems)
                             FileList.Add(it);
@@ -348,23 +382,25 @@ namespace ImageToMidi
                     ShowFolder(item.FullPath);
                     return;
                 }
-                // 普通图片项
+
+                // 普通文件项
                 var mainWin = Application.Current.MainWindow as MainWindow;
                 if (mainWin != null)
                 {
                     string filePath = item.FullPath ?? item.FileName;
                     var ext = System.IO.Path.GetExtension(filePath).ToLowerInvariant();
-                    if (ImageExtensions.Contains(ext))
+
+                    // 扩展支持的格式
+                    if (ImageExtensions.Contains(ext) || VectorExtensions.Contains(ext))
                     {
                         // 调用主窗口的图片加载方法
                         mainWin.LoadImageForPreview(filePath);
                         // 可选：自动切换到主窗口
                         mainWin.Activate();
-                        //this.Hide(); // 如需自动关闭批处理窗口可取消注释
                     }
                     else
                     {
-                        MessageBox.Show("仅支持图片格式: png, jpg, jpeg, bmp, tiff", "不支持的格式", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        MessageBox.Show("仅支持图片和矢量图格式: png, jpg, jpeg, bmp, tiff, svg, eps, ai, pdf\nOther Formats are not supported.", "不支持的格式", MessageBoxButton.OK, MessageBoxImage.Warning);
                     }
                 }
             }
@@ -374,13 +410,13 @@ namespace ImageToMidi
         {
             FileList.Clear();
 
-            // 只有在子目录时才显示“回到上一级”
+            // 只有在子目录时才显示"回到上一级"
             if (!string.IsNullOrEmpty(folder))
             {
                 FileList.Add(new BatchFileItem
                 {
                     Index = 0,
-                    FileName = "回到上一级..",
+                    FileName = $"{Languages.Strings.B_Back}",
                     Format = "",
                     FrameCount = 0,
                     Resolution = "",
@@ -405,14 +441,15 @@ namespace ImageToMidi
                     FileList.Add(new BatchFileItem
                     {
                         FileName = System.IO.Path.GetFileName(dir),
-                        Format = "文件夹",
+                        Format = $"{Languages.Strings.B_FolderFormat}",
                         FrameCount = count,
                         Resolution = "",
                         FullPath = dir,
                         IsFolder = true
                     });
                 }
-                // 文件夹下的图片和视频
+
+                // 文件夹下的图片、视频和矢量图
                 var files = Directory.GetFiles(folder)
                     .Where(f => AllSupportedExtensions.Contains(System.IO.Path.GetExtension(f).ToLowerInvariant()));
                 foreach (var file in files)
@@ -421,6 +458,7 @@ namespace ImageToMidi
                     {
                         var ext = System.IO.Path.GetExtension(file).ToLowerInvariant();
                         string format = ext.TrimStart('.').ToUpperInvariant();
+
                         if (ImageExtensions.Contains(ext))
                         {
                             var bitmap = new System.Windows.Media.Imaging.BitmapImage(new Uri(file));
@@ -438,7 +476,6 @@ namespace ImageToMidi
                         }
                         else if (DynamicImageExtensions.Contains(ext))
                         {
-                            // 获取视频帧数和分辨率（同步或异步都可，推荐同步以保证列表完整）
                             var videoInfo = GetVideoInfoAsync(file).GetAwaiter().GetResult();
                             FileList.Add(new BatchFileItem
                             {
@@ -446,6 +483,18 @@ namespace ImageToMidi
                                 Format = format,
                                 FrameCount = videoInfo.frameCount,
                                 Resolution = videoInfo.resolution,
+                                FullPath = file
+                            });
+                        }
+                        else if (VectorExtensions.Contains(ext)) // 新增矢量图处理
+                        {
+                            var vectorInfo = GetVectorInfoAsync(file).GetAwaiter().GetResult();
+                            FileList.Add(new BatchFileItem
+                            {
+                                FileName = System.IO.Path.GetFileName(file),
+                                Format = format,
+                                FrameCount = vectorInfo.frameCount,
+                                Resolution = vectorInfo.resolution,
                                 FullPath = file
                             });
                         }
@@ -592,6 +641,7 @@ namespace ImageToMidi
                 else
                     item.Index = 0;
             }
+            SetExportButtonsEnabled(true);
         }
         private void BatchDataGrid_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
@@ -611,7 +661,7 @@ namespace ImageToMidi
                 {
                     var baseFolder = item.FullPath;
                     foreach (var file in Directory.GetFiles(baseFolder, "*.*", SearchOption.AllDirectories)
-                        .Where(f => ImageExtensions.Concat(DynamicImageExtensions).Contains(System.IO.Path.GetExtension(f).ToLowerInvariant())))
+                        .Where(f => AllSupportedExtensions.Contains(System.IO.Path.GetExtension(f).ToLowerInvariant()))) // 使用更新后的AllSupportedExtensions
                     {
                         var rel = GetRelativePath(baseFolder, file);
                         result.Add((file, Path.Combine(item.FileName, rel)));
@@ -619,7 +669,7 @@ namespace ImageToMidi
                 }
                 else if (!item.IsBack && !string.IsNullOrEmpty(item.FullPath))
                 {
-                    // 这里也要支持视频文件
+                    // 支持所有格式的文件
                     result.Add((item.FullPath, item.FileName));
                 }
             }
@@ -643,8 +693,10 @@ namespace ImageToMidi
         // 在BatchWindow类中添加辅助方法
         private void SetExportButtonsEnabled(bool enabled)
         {
-            exportAllMidi.IsEnabled = enabled;
-            mergeMidi.IsEnabled = enabled;
+            // 如果没有可导出的文件，则始终禁用按钮
+            var hasFiles = GetAllImageFiles(FileList.Where(f => !f.IsBack)).Count > 0;
+            exportAllMidi.IsEnabled = enabled && hasFiles;
+            mergeMidi.IsEnabled = enabled && hasFiles;
         }
 
         // 修改ExportAllMidi_Click
@@ -663,7 +715,8 @@ namespace ImageToMidi
                 var allFiles = GetAllImageFiles(FileList.Where(f => !f.IsBack));
                 if (allFiles.Count == 0)
                 {
-                    MessageBox.Show("没有可导出的文件。");
+                    SetExportButtonsEnabled(false); // 没有文件时禁用按钮
+                    MessageBox.Show("没有可导出的文件。\nNo file to export.");
                     return;
                 }
                 var dlg = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog();
@@ -700,7 +753,7 @@ namespace ImageToMidi
                             int frameCount = videoInfo.frameCount;
                             if (frameCount <= 0)
                             {
-                                MessageBox.Show($"视频帧数为0，无法导出: {filePath}");
+                                MessageBox.Show($"视频帧数为0，无法导出: {filePath}\nVideo frame count is 0, cannot export.");
                                 continue;
                             }
 
@@ -718,7 +771,7 @@ namespace ImageToMidi
                                 string midiName = $"{Path.GetFileNameWithoutExtension(filePath)}_frame_{frameIndex * sampleInterval:D4}.mid";
                                 string midiPath = Path.Combine(Path.GetDirectoryName(midiFullPath), midiName);
 
-                                exportAllMidi.Content = $"[{i + 1}/{total}] 转MIDI: {Path.GetFileName(framePath)} ({frameIndex + 1}/{frameFiles.Length})";
+                                exportAllMidi.Content = $"[{i + 1}/{total}] {Languages.Strings.B_ConvertingMidi} {Path.GetFileName(framePath)} ({frameIndex + 1}/{frameFiles.Length})";
 
                                 await mainWin.BatchExportMidiAsync(
                                     new[] { new BatchFileItem { FullPath = framePath, FileName = $"frame_{frameIndex * sampleInterval}.png", Index = frameIndex + 1 } },
@@ -733,7 +786,7 @@ namespace ImageToMidi
                         }
                         else
                         {
-                            exportAllMidi.Content = $"[{i + 1}/{total}] 转MIDI: {Path.GetFileName(filePath)}";
+                            exportAllMidi.Content = $"[{i + 1}/{total}] {Languages.Strings.B_ConvertingMidi} {Path.GetFileName(filePath)}";
                             await mainWin.BatchExportMidiAsync(
                                 new[] { new BatchFileItem { FullPath = filePath, FileName = Path.GetFileName(filePath), Index = i + 1 } },
                                 Path.GetDirectoryName(midiFullPath),
@@ -773,12 +826,13 @@ namespace ImageToMidi
                 var allFiles = GetAllImageFiles(FileList.Where(f => !f.IsBack));
                 if (allFiles.Count == 0)
                 {
-                    MessageBox.Show("没有可导出的文件。");
+                    SetExportButtonsEnabled(false); // 没有文件时禁用按钮
+                    MessageBox.Show("没有可导出的文件。\nNo file to export.");
                     return;
                 }
                 SaveFileDialog save = new SaveFileDialog();
-                save.Filter = "MIDI文件 (*.mid)|*.mid";
-                save.FileName = "合并导出.mid"; // 设置默认文件名
+                save.Filter = $"{Languages.Strings.CS_MidiFile} (*.mid)|*.mid";
+                save.FileName = "Merged.mid"; // 设置默认文件名
                 if (!(bool)save.ShowDialog()) return;
                 string outputMidiPath = save.FileName;
 
@@ -807,7 +861,7 @@ namespace ImageToMidi
                             continue;
                         }
                         string tempDir = Path.Combine(Path.GetTempPath(), "ImageToMidiFrames", Guid.NewGuid().ToString());
-                        progress.Report($"[{current}/{total}] 正在提取视频帧: {Path.GetFileName(filePath)}");
+                        progress.Report($"[{current}/{total}] {Languages.Strings.B_ExtractingVideoFrames} {Path.GetFileName(filePath)}");
                         await ExtractSampledFramesAsync(filePath, tempDir, sampleInterval, progress);
 
                         var frameFiles = Directory.GetFiles(tempDir, "frame_*.png").OrderBy(f => f).ToArray();
@@ -825,7 +879,7 @@ namespace ImageToMidi
                     }
                     else
                     {
-                        progress.Report($"[{current}/{total}] 添加图片: {Path.GetFileName(filePath)}");
+                        progress.Report($"[{current}/{total}] {Languages.Strings.B_AddImage} {Path.GetFileName(filePath)}");
                         concatItems.Add(new BatchFileItem
                         {
                             FullPath = filePath,
@@ -846,7 +900,7 @@ namespace ImageToMidi
                     outputMidiPath,
                     mergeProgress
                 );
-                mergeMidi.Content = "合并导出完成";
+                mergeMidi.Content = $"{Languages.Strings.B_MergeCompleted}";
 
                 // 清理所有临时帧目录
                 foreach (var item in concatItems)
@@ -886,9 +940,21 @@ namespace ImageToMidi
                 throw new FileNotFoundException("未找到FFmpeg.exe");
 
             Directory.CreateDirectory(outputDir);
-            progress?.Report("准备开始FFmpeg导出帧...");
+            progress?.Report($"{Languages.Strings.B_StartingFFmpeg}");
 
-            string args = $"-i \"{videoPath}\" -vf \"select=not(mod(n\\,{sampleInterval}))\" -vsync 0 \"{Path.Combine(outputDir, "frame_%05d.png")}\" -y";
+            // 添加内存优化参数
+            string args = $"-i \"{videoPath}\" " +
+                          $"-vf \"select=not(mod(n\\,{sampleInterval}))\" " +
+                          $"-vsync 0 " +
+                          $"-f image2 " +
+                          $"-pix_fmt rgba " +
+                          $"-threads 1 " +                           // 限制线程数
+                          $"-loglevel error " +                      // 减少日志输出
+                          $"-avoid_negative_ts make_zero " +         // 避免负时间戳
+                          $"-fflags +genpts " +                      // 生成时间戳
+                          $"-movflags +faststart " +                 // 快速启动
+                          $"\"{Path.Combine(outputDir, "frame_%05d.png")}\" -y";
+
             var psi = new ProcessStartInfo
             {
                 FileName = ffmpegPath,
@@ -896,30 +962,224 @@ namespace ImageToMidi
                 CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardError = true,
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true,
+                // 限制进程内存使用
+                WorkingDirectory = Path.GetTempPath()
             };
+
+            // 添加环境变量来限制 FFmpeg 内存使用
+            psi.EnvironmentVariables["FFREPORT"] = "file=nul";  // 禁用报告文件
 
             using (var proc = Process.Start(psi))
             {
-                // 实时读取输出
-                string line;
-                while ((line = await proc.StandardError.ReadLineAsync()) != null)
+                // 异步读取错误输出，避免缓冲区溢出
+                var errorTask = Task.Run(async () =>
                 {
-                    progress?.Report(line);
+                    try
+                    {
+                        string line;
+                        while ((line = await proc.StandardError.ReadLineAsync()) != null)
+                        {
+                            // 只报告关键进度信息，减少UI更新频率
+                            if (line.Contains("frame=") || line.Contains("time="))
+                            {
+                                progress?.Report(line);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // 忽略读取错误，但记录日志
+                        System.Diagnostics.Debug.WriteLine($"FFmpeg stderr read error: {ex.Message}");
+                    }
+                });
+
+                // 异步读取标准输出
+                var outputTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        string line;
+                        while ((line = await proc.StandardOutput.ReadLineAsync()) != null)
+                        {
+                            // 处理标准输出
+                            System.Diagnostics.Debug.WriteLine($"FFmpeg stdout: {line}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"FFmpeg stdout read error: {ex.Message}");
+                    }
+                });
+
+                // 等待进程完成，但设置超时
+                const int timeoutMinutes = 3000; // 3000分钟超时
+                var processTask = Task.Run(() => proc.WaitForExit(timeoutMinutes * 60 * 1000));
+
+                try
+                {
+                    await processTask;
+
+                    if (!proc.HasExited)
+                    {
+                        progress?.Report("FFmpeg 处理超时，正在终止进程...");
+                        try
+                        {
+                            proc.Kill();
+                            proc.WaitForExit(5000); // 等待5秒钟清理
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Kill FFmpeg process error: {ex.Message}");
+                        }
+                        throw new TimeoutException($"视频处理超时（{timeoutMinutes}分钟）");
+                    }
+
+                    // 等待输出读取完成
+                    await Task.WhenAll(errorTask, outputTask);
+
+                    if (proc.ExitCode != 0)
+                    {
+                        throw new Exception($"FFmpeg 处理失败，退出代码: {proc.ExitCode}");
+                    }
                 }
-                await Task.Run(() => proc.WaitForExit());
+                finally
+                {
+                    // 确保进程被正确清理
+                    try
+                    {
+                        if (!proc.HasExited)
+                        {
+                            proc.Kill();
+                            proc.WaitForExit(1000);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Process cleanup error: {ex.Message}");
+                    }
+                }
             }
-            progress?.Report("FFmpeg导出帧完成");
+
+            progress?.Report($"{Languages.Strings.B_FFmpegCompleted}");
+
+            // 强制垃圾回收，释放内存
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
+        // 新增：检查Ghostscript是否可用
+        private static bool IsGhostscriptAvailable()
+        {
+            string[] candidates = { "gswin64c.exe", "gswin32c.exe" };
+            foreach (var exe in candidates)
+            {
+                try
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = exe,
+                        Arguments = "-v",
+                        CreateNoWindow = true,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+                    using (var proc = Process.Start(psi))
+                    {
+                        if (!proc.WaitForExit(1000)) // 最多等1秒
+                            continue;
+                        if (proc.ExitCode == 0 || proc.ExitCode == 1)
+                            return true;
+                    }
+                }
+                catch
+                {
+                    // 忽略异常，继续检测下一个
+                }
+            }
+            return false;
+        }
+
+        // 新增：获取矢量图信息
+        private static async Task<(int frameCount, string resolution)> GetVectorInfoAsync(string vectorPath)
+        {
+            string ext = Path.GetExtension(vectorPath).ToLowerInvariant();
+
+            if (ext == ".svg")
+            {
+                try
+                {
+                    var svgDocument = Svg.SvgDocument.Open(vectorPath);
+                    if (svgDocument != null)
+                    {
+                        var viewBox = svgDocument.ViewBox;
+                        int width = (int)(viewBox.Width > 0 ? viewBox.Width : (svgDocument.Width.Value > 0 ? svgDocument.Width.Value : 100));
+                        int height = (int)(viewBox.Height > 0 ? viewBox.Height : (svgDocument.Height.Value > 0 ? svgDocument.Height.Value : 100));
+                        return (1, $"{width}x{height}");
+                    }
+                }
+                catch
+                {
+                    return (1, "未知");
+                }
+            }
+            else if (ext == ".eps" || ext == ".ai" || ext == ".pdf")
+            {
+                if (!IsGhostscriptAvailable())
+                {
+                    return (1, "需要Ghostscript");
+                }
+
+                try
+                {
+                    // 使用Ghostscript获取文档信息
+                    string args = $"-dNODISPLAY -dBATCH -dNOPAUSE -q -c \"({vectorPath}) (r) file runpdfbegin pdfpagecount = quit\"";
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "gswin64c.exe",
+                        Arguments = args,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+
+                    using (var proc = Process.Start(psi))
+                    {
+                        string output = await proc.StandardOutput.ReadToEndAsync();
+                        await Task.Run(() => proc.WaitForExit());
+
+                        // 简单解析，实际可能需要更复杂的逻辑
+                        return (1, "矢量图");
+                    }
+                }
+                catch
+                {
+                    return (1, "解析失败");
+                }
+            }
+
+            return (1, "未知");
         }
         private void Info_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("" +
+            MessageBox.Show(
                 "您可在主页面进行参数设置\n" +
-                "如果需要导入gif或视频文件的话，需要FFmpeg.exe与FFprobe.exe\n\n" +
+                "You can set parameters on the main window\n\n" +
+                "如果需要导入gif或视频文件的话，需要FFmpeg.exe与FFprobe.exe\n" +
+                "To import GIF or video files, FFmpeg.exe and FFprobe.exe are required\n\n" +
                 "BPM设置参考：\n" +
+                "BPM Reference:\n" +
                 "BPM=设定高度*每像素时值*视频帧率*60秒/MIDI分辨率\n" +
-                "例如384px*10Gate*30fps*60s/960ppq=7200BPM\n" +
-                "BPM上限为60,000,000", "参数设置技巧", MessageBoxButton.OK, MessageBoxImage.Information);
+                "BPM = Set Height * Gate Per Pixel * Video Frame Rate * 60 seconds / MIDI Resolution\n" +
+                "例如: 384px * 10Gate * 30fps * 60s / 960ppq = 7200BPM\n" +
+                "Example: 384px * 10Gate * 30fps * 60s / 960ppq = 7200BPM\n" +
+                "BPM上限为60,000,000\n" +
+                "Maximum BPM is 60,000,000",
+                "参数设置技巧 | Parameter Setting Tips",
+                MessageBoxButton.OK, MessageBoxImage.Information
+            );
         }
     }
 }

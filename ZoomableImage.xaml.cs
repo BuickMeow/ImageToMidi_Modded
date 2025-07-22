@@ -310,7 +310,8 @@ namespace ImageToMidi
                         break;
                     case BitmapScalingMode.Unspecified:
                     default:
-                        _highQualityPaint.IsAntialias = true;
+                        _highQualityPaint.IsAntialias = false;
+                        //_highQualityPaint.FilterQuality = SKFilterQuality.Low;
                         break;
                 }
                 _lastScalingMode = ScalingMode;
@@ -661,7 +662,7 @@ namespace ImageToMidi
                 return s;
             }
             double v = velocity / dist;
-            double x = (double)animationClock.CurrentProgress;
+            double x = (double)animationClock.CurrentProgress / 2 + 0.5; // 只用后半段
 
             double ease = EaseFunc(x, v) - EaseFunc(0, v);
             double vel = EaseVelFunc(x, v);

@@ -1,0 +1,866 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="RawMidiSelect" xml:space="preserve">
+    <value>手动选色</value>
+  </data>
+  <data name="ColorEventsSelect" xml:space="preserve">
+    <value>自动选色</value>
+  </data>
+  <data name="Title" xml:space="preserve">
+    <value>Image To MIDI 魔改版 v1.4.5</value>
+  </data>
+  <data name="SettingsSelect" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="SaveMidi" xml:space="preserve">
+    <value>导出 MIDI</value>
+  </data>
+  <data name="NL_Unlimited" xml:space="preserve">
+    <value>不限制</value>
+  </data>
+  <data name="NL_FlowWithColor" xml:space="preserve">
+    <value>随颜色流动</value>
+  </data>
+  <data name="NL_SplitToGrid" xml:space="preserve">
+    <value>切成小方格</value>
+  </data>
+  <data name="KeyRange" xml:space="preserve">
+    <value>琴键范围</value>
+  </data>
+  <data name="PreviewTip" xml:space="preserve">
+    <value>过程较慢，请耐心等待</value>
+  </data>
+  <data name="ColPickerTip" xml:space="preserve">
+    <value>点击左侧图片吸色或者输入十六进制色号</value>
+  </data>
+  <data name="SetHexButton" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="ErrorTextBlock" xml:space="preserve">
+    <value>色号无效</value>
+  </data>
+  <data name="ColorCount" xml:space="preserve">
+    <value>颜色数（每行16色）</value>
+  </data>
+  <data name="ClusteringMethod" xml:space="preserve">
+    <value>色板聚类算法</value>
+  </data>
+  <data name="ImagePreviewing" xml:space="preserve">
+    <value>图像预览设置</value>
+  </data>
+  <data name="UseGrayscaleImage" xml:space="preserve">
+    <value>使用灰度图</value>
+  </data>
+  <data name="VectorImagePreviewWidth" xml:space="preserve">
+    <value>矢量图预览宽度</value>
+  </data>
+  <data name="MidiPreviewing" xml:space="preserve">
+    <value>MIDI预览设置</value>
+  </data>
+  <data name="ImageHeight" xml:space="preserve">
+    <value>图片高度</value>
+  </data>
+  <data name="ColorAllocation" xml:space="preserve">
+    <value>颜色分配算法</value>
+  </data>
+  <data name="InterpolationMethod" xml:space="preserve">
+    <value>插值算法</value>
+  </data>
+  <data name="MidiOutput" xml:space="preserve">
+    <value>MIDI输出设置</value>
+  </data>
+  <data name="GenColorEvents" xml:space="preserve">
+    <value>生成颜色事件</value>
+  </data>
+  <data name="ColorSeed" xml:space="preserve">
+    <value>颜色种子</value>
+  </data>
+  <data name="LimitedLength" xml:space="preserve">
+    <value>是否限制音符长度</value>
+  </data>
+  <data name="MidiBpm" xml:space="preserve">
+    <value>BPM</value>
+  </data>
+  <data name="StartOffset" xml:space="preserve">
+    <value>起始偏移</value>
+  </data>
+  <data name="MidiPpq" xml:space="preserve">
+    <value>MIDI分辨率</value>
+  </data>
+  <data name="TicksPerPixel" xml:space="preserve">
+    <value>每像素时值</value>
+  </data>
+  <data name="HM_SameAsWidth" xml:space="preserve">
+    <value>宽高相等</value>
+  </data>
+  <data name="HM_OriginalHeight" xml:space="preserve">
+    <value>原图高度</value>
+  </data>
+  <data name="HM_CustomHeight" xml:space="preserve">
+    <value>自定高度</value>
+  </data>
+  <data name="HM_OriginalAspectRatio" xml:space="preserve">
+    <value>原图比例</value>
+  </data>
+  <data name="CA_RGB" xml:space="preserve">
+    <value>RGB最近邻</value>
+  </data>
+  <data name="CP_NoColorSelected" xml:space="preserve">
+    <value>未选择颜色</value>
+  </data>
+  <data name="CA_HSV" xml:space="preserve">
+    <value>HSV色相优先</value>
+  </data>
+  <data name="CA_HSL" xml:space="preserve">
+    <value>HSL色相优先</value>
+  </data>
+  <data name="CA_LAB" xml:space="preserve">
+    <value>LAB最近邻</value>
+  </data>
+  <data name="B_Title" xml:space="preserve">
+    <value>批处理</value>
+  </data>
+  <data name="B_StartingFFmpeg" xml:space="preserve">
+    <value>准备开始FFmpeg导出帧...</value>
+  </data>
+  <data name="B_FFmpegCompleted" xml:space="preserve">
+    <value>FFmpeg导出帧完成</value>
+  </data>
+  <data name="B_FileFormat" xml:space="preserve">
+    <value>图片/视频文件</value>
+  </data>
+  <data name="B_FolderFormat" xml:space="preserve">
+    <value>文件夹</value>
+  </data>
+  <data name="B_Back" xml:space="preserve">
+    <value>回到上一级..</value>
+  </data>
+  <data name="B_ConvertingMidi" xml:space="preserve">
+    <value>转MIDI:</value>
+  </data>
+  <data name="B_MergeCompleted" xml:space="preserve">
+    <value>合并导出成功</value>
+  </data>
+  <data name="B_ExtractingVideoFrames" xml:space="preserve">
+    <value>正在提取视频帧:</value>
+  </data>
+  <data name="B_AddImage" xml:space="preserve">
+    <value>添加图片:</value>
+  </data>
+  <data name="B_AllFiles" xml:space="preserve">
+    <value>所有文件</value>
+  </data>
+  <data name="B_ExportAllMidi" xml:space="preserve">
+    <value>批量导出所有MIDI</value>
+  </data>
+  <data name="B_MergeMidi" xml:space="preserve">
+    <value>合并为同一个MIDI</value>
+  </data>
+  <data name="BDG_Index" xml:space="preserve">
+    <value>序号</value>
+  </data>
+  <data name="BDG_Resolution" xml:space="preserve">
+    <value>分辨率</value>
+  </data>
+  <data name="BDG_Format" xml:space="preserve">
+    <value>格式</value>
+  </data>
+  <data name="BDG_FileName" xml:space="preserve">
+    <value>文件名</value>
+  </data>
+  <data name="CS_OpenFilter" xml:space="preserve">
+    <value>位图/矢量图</value>
+  </data>
+  <data name="CS_TrackHex" xml:space="preserve">
+    <value>色号:</value>
+  </data>
+  <data name="CS_TrackNoteCount" xml:space="preserve">
+    <value>音符数:</value>
+  </data>
+  <data name="CS_GeneratingPalette" xml:space="preserve">
+    <value>正在生成色板...</value>
+  </data>
+  <data name="CS_GeneratingImage" xml:space="preserve">
+    <value>正在生成图片...</value>
+  </data>
+  <data name="CS_GeneratingNotes" xml:space="preserve">
+    <value>正在生成音符...</value>
+  </data>
+  <data name="CS_ExportingMidi" xml:space="preserve">
+    <value>正在导出 MIDI...</value>
+  </data>
+  <data name="CS_ExportNotecount1" xml:space="preserve">
+    <value>导出 MIDI（音符数</value>
+  </data>
+  <data name="CS_ExportNotecount2" xml:space="preserve">
+    <value>）</value>
+  </data>
+  <data name="CS_ExportingFolder" xml:space="preserve">
+    <value>导出成功！点击打开所在文件夹</value>
+  </data>
+  <data name="CS_ExportingCompleted" xml:space="preserve">
+    <value>导出成功！</value>
+  </data>
+  <data name="CS_PleaseWait" xml:space="preserve">
+    <value>请稍侯...</value>
+  </data>
+  <data name="CS_MidiFile" xml:space="preserve">
+    <value>MIDI文件</value>
+  </data>
+  <data name="CS_LoadingFile" xml:space="preserve">
+    <value>正在读取文件...</value>
+  </data>
+  <data name="CS_DecodingCompleted" xml:space="preserve">
+    <value>图片解码完成</value>
+  </data>
+  <data name="CS_ThumbGenCompleted" xml:space="preserve">
+    <value>缩略图生成完成</value>
+  </data>
+  <data name="CS_GeneratingLandscape" xml:space="preserve">
+    <value>正在生成横向缩略图...</value>
+  </data>
+  <data name="CS_GeneratingPortrait" xml:space="preserve">
+    <value>正在生成纵向缩略图...</value>
+  </data>
+  <data name="CS_SVGAnalyzing" xml:space="preserve">
+    <value>1/3 正在解析SVG...</value>
+  </data>
+  <data name="CS_GSBoundingBox" xml:space="preserve">
+    <value>1/4 解析BoundingBox...</value>
+  </data>
+  <data name="CS_GSRendering" xml:space="preserve">
+    <value>2/4 调用Ghostscript渲染...</value>
+  </data>
+  <data name="CS_GSScaling" xml:space="preserve">
+    <value>4/4 完成缩放...</value>
+  </data>
+  <data name="Toolbox" xml:space="preserve">
+    <value>工具箱</value>
+  </data>
+  <data name="M_NoFilesToExport" xml:space="preserve">
+    <value>没有可导出的文件</value>
+  </data>
+  <data name="CS_GSReading" xml:space="preserve">
+    <value>3/4 读取PNG结果...</value>
+  </data>
+  <data name="CS_SVGRendering" xml:space="preserve">
+    <value>2/3 正在渲染SVG...</value>
+  </data>
+  <data name="CS_SVGCompleted" xml:space="preserve">
+    <value>SVG缩略图生成完成</value>
+  </data>
+  <data name="CS_SVGConverting" xml:space="preserve">
+    <value>3/3 正在转换为WPF位图...</value>
+  </data>
+  <data name="BDG_FrameCount" xml:space="preserve">
+    <value>帧数</value>
+  </data>
+  <data name="CA_CIEDE2000" xml:space="preserve">
+    <value>CIEDE2000</value>
+  </data>
+  <data name="RM_AreaResampling" xml:space="preserve">
+    <value>面积重采样</value>
+  </data>
+  <data name="RM_Bilinear" xml:space="preserve">
+    <value>双线性插值</value>
+  </data>
+  <data name="RM_Hermite" xml:space="preserve">
+    <value>埃尔米特插值</value>
+  </data>
+  <data name="RM_NearestNeighbor" xml:space="preserve">
+    <value>最近邻插值</value>
+  </data>
+  <data name="RM_Mitchell" xml:space="preserve">
+    <value>米切尔插值</value>
+  </data>
+  <data name="RM_Gaussian" xml:space="preserve">
+    <value>高斯插值</value>
+  </data>
+  <data name="RM_Lanczos" xml:space="preserve">
+    <value>兰佐斯插值</value>
+  </data>
+  <data name="RM_Bicubic" xml:space="preserve">
+    <value>双三次插值</value>
+  </data>
+  <data name="RM_BoxFilter" xml:space="preserve">
+    <value>箱体平均</value>
+  </data>
+  <data name="RM_ModePooling" xml:space="preserve">
+    <value>众数采样</value>
+  </data>
+  <data name="RM_IntegralImage" xml:space="preserve">
+    <value>积分图像</value>
+  </data>
+  <data name="CS_Keys" xml:space="preserve">
+    <value>键</value>
+  </data>
+  <data name="CS_KeysBlackFilled" xml:space="preserve">
+    <value>黑键(填充)</value>
+  </data>
+  <data name="CS_KeysWhiteFilled" xml:space="preserve">
+    <value>白键(填充)</value>
+  </data>
+  <data name="CS_KeysBlackFixed" xml:space="preserve">
+    <value>黑键(裁剪)</value>
+  </data>
+  <data name="CS_KeysWhiteClipped" xml:space="preserve">
+    <value>白键(裁剪)</value>
+  </data>
+  <data name="CS_KeysWhiteFixed" xml:space="preserve">
+    <value>白键(等宽)</value>
+  </data>
+  <data name="CS_KeysBlackClipped" xml:space="preserve">
+    <value>黑键(裁剪)</value>
+  </data>
+	<!-- ClusterMethodComboBox 算法名称 -->
+	<data name="CM_KMeansPP_Default" xml:space="preserve">
+    <value>KMeans++ (默认)</value>
+  </data>
+	<data name="CM_WpfMedianCut" xml:space="preserve">
+    <value>WPF 中值切割 (原生)</value>
+  </data>
+	<data name="CM_WpfKMeans" xml:space="preserve">
+    <value>WPF + K-Means</value>
+  </data>
+	<data name="CM_KMPlusKM_Recommended" xml:space="preserve">
+    <value>KM++ &amp; KM (推荐)</value>
+  </data>
+	<data name="CM_Popularity" xml:space="preserve">
+    <value>频率法</value>
+  </data>
+	<data name="CM_Octree" xml:space="preserve">
+    <value>八叉树</value>
+  </data>
+	<data name="CM_VarianceSplit" xml:space="preserve">
+    <value>最大方差切割</value>
+  </data>
+	<data name="CM_PCA" xml:space="preserve">
+    <value>PCA主成分 (适合少色)</value>
+  </data>
+	<data name="CM_MinMaxKM" xml:space="preserve">
+    <value>MinMax &amp; KM++</value>
+  </data>
+	<data name="CM_NativeKM" xml:space="preserve">
+    <value>Arduano 原生KM</value>
+  </data>
+	<data name="CM_MeanShift" xml:space="preserve">
+    <value>MeanShift (适合少色)</value>
+  </data>
+	<data name="CM_DBSCAN" xml:space="preserve">
+    <value>DBSCAN (适合少色)</value>
+  </data>
+	<data name="CM_GMM" xml:space="preserve">
+    <value>高斯混合</value>
+  </data>
+	<data name="CM_Hierarchical" xml:space="preserve">
+    <value>层次聚类</value>
+  </data>
+	<data name="CM_Spectral" xml:space="preserve">
+    <value>谱聚类</value>
+  </data>
+	<data name="CM_LabKMeans" xml:space="preserve">
+    <value>Lab KMeans</value>
+  </data>
+	<data name="CM_FloydSteinberg" xml:space="preserve">
+    <value>Floyd–Steinberg抖动</value>
+  </data>
+	<data name="CM_OrderedDither" xml:space="preserve">
+    <value>有序抖动</value>
+  </data>
+	<data name="CM_OPTICS" xml:space="preserve">
+    <value>OPTICS (适合少色)</value>
+  </data>
+	<data name="CM_FixedBitPalette" xml:space="preserve">
+    <value>固定调色板</value>
+  </data>
+
+	<!-- ClusterMethodComboBox 算法 ToolTip -->
+	<data name="CM_KMeansPP_ToolTip" xml:space="preserve">
+    <value>KMeans++聚类，改进初始点选择，聚类效果更稳定。</value>
+  </data>
+	<data name="CM_WpfMedianCut_ToolTip" xml:space="preserve">
+    <value>WPF自带的中值切割算法，速度快，适合简单场景。</value>
+  </data>
+	<data name="CM_WpfKMeans_ToolTip" xml:space="preserve">
+    <value>[有随机性] 先用WPF中值切割，再用K-Means细化聚类，兼顾速度和效果。</value>
+  </data>
+	<data name="CM_KMPlusKM_Recommended_ToolTip" xml:space="preserve">
+    <value>[有随机性] KMeans++初始化+KMeans聚类，提升聚类质量。</value>
+  </data>
+	<data name="CM_Popularity_ToolTip" xml:space="preserve">
+    <value>按颜色出现频率选取主色，简单高效。</value>
+  </data>
+	<data name="CM_Octree_ToolTip" xml:space="preserve">
+    <value>八叉树分割空间，适合颜色分布稀疏的图片。</value>
+  </data>
+	<data name="CM_VarianceSplit_ToolTip" xml:space="preserve">
+    <value>按颜色方差最大方向切割，突出主色。</value>
+  </data>
+	<data name="CM_PCA_ToolTip" xml:space="preserve">
+    <value>主成分分析，提取颜色分布主方向。</value>
+  </data>
+	<data name="CM_MinMaxKM_ToolTip" xml:space="preserve">
+    <value>最大最小距离法结合KMeans++，提升聚类多样性。</value>
+  </data>
+	<data name="CM_NativeKM_ToolTip" xml:space="preserve">
+    <value>Arduano原生KMeans算法，原版ImageToMidi就是这个算法。</value>
+  </data>
+	<data name="CM_MeanShift_ToolTip" xml:space="preserve">
+    <value>均值漂移聚类，无需指定聚类数，适合复杂分布。</value>
+  </data>
+	<data name="CM_DBSCAN_ToolTip" xml:space="preserve">
+    <value>基于密度的聚类，能发现任意形状的聚类。</value>
+  </data>
+	<data name="CM_GMM_ToolTip" xml:space="preserve">
+    <value>高斯混合模型，适合颜色分布为多高斯的图片。</value>
+  </data>
+	<data name="CM_Hierarchical_ToolTip" xml:space="preserve">
+    <value>自底向上合并聚类，形成层次结构。</value>
+  </data>
+	<data name="CM_Spectral_ToolTip" xml:space="preserve">
+    <value>基于图论的聚类方法，适合复杂结构。</value>
+  </data>
+	<data name="CM_LabKMeans_ToolTip" xml:space="preserve">
+    <value>在Lab颜色空间下的KMeans聚类，更符合人眼感知。</value>
+  </data>
+	<data name="CM_FloydSteinberg_ToolTip" xml:space="preserve">
+    <value>经典误差扩散抖动算法，提升色彩表现力。</value>
+  </data>
+	<data name="CM_OrderedDither_ToolTip" xml:space="preserve">
+    <value>使用Bayer矩阵的有序抖动，适合低色深显示。</value>
+  </data>
+	<data name="CM_OPTICS_ToolTip" xml:space="preserve">
+    <value>基于密度的聚类算法，能发现不同密度的聚类结构。</value>
+  </data>
+	<data name="CM_FixedBitPalette_ToolTip" xml:space="preserve">
+    <value>使用固定调色板，最高256色。</value>
+  </data>
+
+	<!-- ParamPanel 参数名 -->
+	<data name="PP_MaxSamples" xml:space="preserve">
+    <value>最大采样数 (maxSamples)</value>
+  </data>
+	<data name="PP_Seed" xml:space="preserve">
+    <value>随机种子 (seed)</value>
+  </data>
+	<data name="PP_MaxIterations" xml:space="preserve">
+    <value>最大迭代次数 (maxIterations)</value>
+  </data>
+	<data name="PP_Threshold" xml:space="preserve">
+    <value>收敛阈值 (threshold)</value>
+  </data>
+	<data name="PP_MaxLevel" xml:space="preserve">
+    <value>最大层级 (maxLevel)</value>
+  </data>
+	<data name="PP_PowerIterations" xml:space="preserve">
+    <value>幂迭代次数 (power iterations)</value>
+  </data>
+	<data name="PP_KMeansIters" xml:space="preserve">
+    <value>KMeans迭代次数 (kmeansIters)</value>
+  </data>
+	<data name="PP_Iterations" xml:space="preserve">
+    <value>迭代次数 (iterations)</value>
+  </data>
+	<data name="PP_Rate" xml:space="preserve">
+    <value>收敛速率 (rate)</value>
+  </data>
+	<data name="PP_Bandwidth" xml:space="preserve">
+    <value>带宽 (bandwidth)</value>
+  </data>
+	<data name="PP_MaxIter" xml:space="preserve">
+    <value>最大迭代次数 (maxIter)</value>
+  </data>
+	<data name="PP_Epsilon" xml:space="preserve">
+    <value>邻域半径 (epsilon)</value>
+  </data>
+	<data name="PP_MinPts" xml:space="preserve">
+    <value>最小点数 (minPts)</value>
+  </data>
+	<data name="PP_Tol" xml:space="preserve">
+    <value>收敛阈值 (tol)</value>
+  </data>
+	<data name="PP_Linkage" xml:space="preserve">
+    <value>链接方式 (linkage)</value>
+  </data>
+	<data name="PP_Distance" xml:space="preserve">
+    <value>距离类型 (distance)</value>
+  </data>
+	<data name="PP_Sigma" xml:space="preserve">
+    <value>高斯核σ (sigma)</value>
+  </data>
+	<data name="PP_KMeansIters2" xml:space="preserve">
+    <value>KMeans迭代次数</value>
+  </data>
+	<data name="PP_BitDepth" xml:space="preserve">
+    <value>位深 (bit depth)</value>
+  </data>
+	<data name="PP_BaseMethod" xml:space="preserve">
+    <value>基础调色板算法</value>
+  </data>
+	<data name="PP_DitherStrength" xml:space="preserve">
+    <value>抖动强度 (0.0~2.0)</value>
+  </data>
+	<data name="PP_MatrixSize" xml:space="preserve">
+    <value>Bayer矩阵大小</value>
+  </data>
+	<data name="PP_Serpentine" xml:space="preserve">
+    <value>蛇形扫描</value>
+  </data>
+	<data name="PP_GrayPalette" xml:space="preserve">
+    <value>灰度调色板</value>
+  </data>
+
+	<!-- ParamPanel ComboBoxItem 选项 -->
+	<data name="PP_SingleLinkage" xml:space="preserve">
+    <value>单链接</value>
+  </data>
+	<data name="PP_CompleteLinkage" xml:space="preserve">
+    <value>全链接</value>
+  </data>
+	<data name="PP_AverageLinkage" xml:space="preserve">
+    <value>平均链接</value>
+  </data>
+	<data name="PP_EuclideanDistance" xml:space="preserve">
+    <value>欧氏距离</value>
+  </data>
+	<data name="PP_ManhattanDistance" xml:space="preserve">
+    <value>曼哈顿距离</value>
+  </data>
+	<data name="PP_WpfMedianCut" xml:space="preserve">
+    <value>WPF中值切割</value>
+  </data>
+	<data name="PP_KMeansPP" xml:space="preserve">
+    <value>KMeans++</value>
+  </data>
+	<data name="PP_WpfKMeans" xml:space="preserve">
+    <value>WPF+KMeans</value>
+  </data>
+	<data name="PP_PCA" xml:space="preserve">
+    <value>PCA主成分</value>
+  </data>
+	<data name="PP_DBSCAN" xml:space="preserve">
+    <value>DBSCAN</value>
+  </data>
+	<data name="PP_Size2x2" xml:space="preserve">
+    <value>2x2</value>
+  </data>
+	<data name="PP_Size4x4" xml:space="preserve">
+    <value>4x4</value>
+  </data>
+	<data name="PP_Size8x8" xml:space="preserve">
+    <value>8x8</value>
+  </data>
+	<!-- ParamPanel ToolTip 内容 -->
+	<!-- KMeans++ -->
+	<data name="PP_MaxSamples_ToolTip" xml:space="preserve">
+  <value>用于聚类的最大像素采样数。整数。建议20000~50000。调低速度快但聚类不准，调高更准但更慢。</value>
+</data>
+	<data name="PP_Seed_ToolTip" xml:space="preserve">
+  <value>聚类初始化的随机种子。整数。0为自动随机，其他值可复现结果。</value>
+</data>
+
+	<!-- KMeans -->
+	<data name="PP_MaxIterations_ToolTip" xml:space="preserve">
+  <value>KMeans最大迭代次数。整数。建议50~200。调低可能聚类不收敛，调高速度变慢但更精确。</value>
+</data>
+	<data name="PP_Threshold_ToolTip" xml:space="preserve">
+  <value>聚类收敛判定的阈值。小数。建议0.1~5。调低更精确但慢，调高更快但可能不够精细。</value>
+</data>
+
+	<!-- Octree -->
+	<data name="PP_MaxLevel_ToolTip" xml:space="preserve">
+  <value>八叉树的最大层级。整数。建议6~8。调低速度快但色彩分辨率低，调高更细腻但慢。</value>
+</data>
+	<data name="PP_OctreeMaxSamples_ToolTip" xml:space="preserve">
+  <value>用于八叉树的最大采样像素数。整数。建议20000。调低快但不准，调高慢但准。</value>
+</data>
+
+	<!-- VarianceSplit -->
+	<data name="PP_VarianceSplitMaxSamples_ToolTip" xml:space="preserve">
+  <value>用于聚类的最大像素采样数。整数。建议20000。调低速度快但聚类不准，调高更准但更慢。</value>
+</data>
+
+	<!-- PCA -->
+	<data name="PP_PowerIterations_ToolTip" xml:space="preserve">
+  <value>PCA主成分分析的幂迭代次数。整数。建议10~30。调低速度快但主成分不准，调高更准但更慢。</value>
+</data>
+	<data name="PP_PcaMaxSamples_ToolTip" xml:space="preserve">
+  <value>用于PCA的最大像素采样数。整数。建议20000。调低快但不准，调高慢但准。</value>
+</data>
+
+	<!-- WeightedMaxMin -->
+	<data name="PP_KMeansIters_ToolTip" xml:space="preserve">
+  <value>KMeans聚类的迭代次数。整数。建议3~10。调低速度快但聚类不准，调高更准但更慢。</value>
+</data>
+	<data name="PP_WeightedMaxMinMaxSamples_ToolTip" xml:space="preserve">
+  <value>用于聚类的最大像素采样数。整数。建议20000。调低快但不准，调高慢但准。</value>
+</data>
+
+	<!-- NativeKMeans -->
+	<data name="PP_Iterations_ToolTip" xml:space="preserve">
+  <value>KMeans聚类的迭代次数。整数。建议5~20。调低速度快但聚类不准，调高更准但更慢。</value>
+</data>
+	<data name="PP_Rate_ToolTip" xml:space="preserve">
+  <value>KMeans聚类的收敛速率。小数。建议0.1~0.5。调低收敛慢但更稳定，调高收敛快但可能不稳定。</value>
+</data>
+
+	<!-- MeanShift -->
+	<data name="PP_Bandwidth_ToolTip" xml:space="preserve">
+  <value>均值漂移的带宽参数。小数。建议16~64。调低聚类更细致，调高更粗糙。</value>
+</data>
+	<data name="PP_MeanShiftMaxIter_ToolTip" xml:space="preserve">
+  <value>均值漂移最大迭代次数。整数。建议5~20。调低可能不收敛，调高更慢但更准。</value>
+</data>
+	<data name="PP_MeanShiftMaxSamples_ToolTip" xml:space="preserve">
+  <value>用于聚类的最大像素采样数。整数。建议10000。调低快但不准，调高慢但准。</value>
+</data>
+
+	<!-- DBSCAN -->
+	<data name="PP_Epsilon_ToolTip" xml:space="preserve">
+  <value>DBSCAN聚类的邻域半径。小数。建议1~10。调低聚类更细致，调高更粗糙。</value>
+</data>
+	<data name="PP_MinPts_ToolTip" xml:space="preserve">
+  <value>DBSCAN聚类的最小点数。整数。建议3~10。调低更易分出小簇，调高更难分簇。</value>
+</data>
+	<data name="PP_DBSCANMaxSamples_ToolTip" xml:space="preserve">
+  <value>用于聚类的最大像素采样数。整数。建议2000。调低快但不准，调高慢但准。</value>
+</data>
+
+	<!-- GMM -->
+	<data name="PP_GMMMaxIter_ToolTip" xml:space="preserve">
+  <value>高斯混合模型最大迭代次数。整数。建议10~50。调低速度快但可能不收敛，调高更准但更慢。</value>
+</data>
+	<data name="PP_Tol_ToolTip" xml:space="preserve">
+  <value>高斯混合模型的收敛阈值。小数。建议0.1~5。调低更精确但慢，调高更快但可能不够精细。</value>
+</data>
+	<data name="PP_GMMMaxSamples_ToolTip" xml:space="preserve">
+  <value>用于聚类的最大像素采样数。整数。建议2000。调低快但不准，调高慢但准。</value>
+</data>
+
+	<!-- Hierarchical -->
+	<data name="PP_HierarchicalMaxSamples_ToolTip" xml:space="preserve">
+  <value>用于层次聚类的最大像素采样数。整数。建议350。调低快但不准，调高慢但准。</value>
+</data>
+	<data name="PP_Linkage_ToolTip" xml:space="preserve">
+  <value>层次聚类的合并方式。单链接：易分长链，噪声敏感；全链接：分簇紧凑，抗噪声；平均链接：折中。</value>
+</data>
+	<data name="PP_Distance_ToolTip" xml:space="preserve">
+  <value>聚类时的距离度量方式。欧氏距离：常用，适合连续数据；曼哈顿距离：适合离散数据。</value>
+</data>
+	<data name="PP_SingleLinkage_ToolTip" xml:space="preserve">
+  <value>每次合并最近的两个簇，易分长链，噪声敏感。</value>
+</data>
+	<data name="PP_CompleteLinkage_ToolTip" xml:space="preserve">
+  <value>每次合并最远的两个簇，分簇紧凑，抗噪声。</value>
+</data>
+	<data name="PP_AverageLinkage_ToolTip" xml:space="preserve">
+  <value>每次合并平均距离最近的两个簇，折中方案。</value>
+</data>
+	<data name="PP_EuclideanDistance_ToolTip" xml:space="preserve">
+  <value>常用距离，适合连续数据。</value>
+</data>
+	<data name="PP_ManhattanDistance_ToolTip" xml:space="preserve">
+  <value>适合离散数据。</value>
+</data>
+
+	<!-- Spectral -->
+	<data name="PP_SpectralMaxSamples_ToolTip" xml:space="preserve">
+  <value>用于谱聚类的最大像素采样数。整数。建议2000。调低快但不准，调高慢但准。</value>
+</data>
+	<data name="PP_Sigma_ToolTip" xml:space="preserve">
+  <value>谱聚类高斯核的σ。小数。建议16~64。调低分簇更细致，调高更粗糙。</value>
+</data>
+	<data name="PP_SpectralKMeansIters_ToolTip" xml:space="preserve">
+  <value>谱聚类后KMeans的迭代次数。整数。建议5~20。调低快但不准，调高慢但准。</value>
+</data>
+
+	<!-- Lab KMeans -->
+	<data name="PP_LabKMeansMaxIterations_ToolTip" xml:space="preserve">
+  <value>KMeans最大迭代次数。整数。建议50~200。调低可能聚类不收敛，调高速度变慢但更精确。</value>
+</data>
+	<data name="PP_LabKMeansThreshold_ToolTip" xml:space="preserve">
+  <value>聚类收敛判定的阈值。小数。建议0.1~5。调低更精确但慢，调高更快但可能不够精细。</value>
+</data>
+
+	<!-- Floyd-Steinberg -->
+	<data name="PP_FloydBaseMethod_ToolTip" xml:space="preserve">
+  <value>选择用于生成基础调色板的算法。不同算法对色彩分布和速度有影响。</value>
+</data>
+	<data name="PP_FloydDitherStrength_ToolTip" xml:space="preserve">
+  <value>抖动误差扩散强度。小数。建议1.0。调低抖动弱，调高抖动强，过高可能噪点多。</value>
+</data>
+	<data name="PP_FloydSerpentine_ToolTip" xml:space="preserve">
+  <value>开启后，抖动扫描方向每行交替，减少条纹伪影。建议开启。</value>
+</data>
+	<data name="PP_FloydWpfMedianCut_ToolTip" xml:space="preserve">
+  <value>速度快，适合简单图片。</value>
+</data>
+	<data name="PP_FloydKMeansPP_ToolTip" xml:space="preserve">
+  <value>聚类效果更好，速度略慢。</value>
+</data>
+	<data name="PP_FloydWpfKMeans_ToolTip" xml:space="preserve">
+  <value>兼顾速度和效果。</value>
+</data>
+	<data name="PP_FloydPCA_ToolTip" xml:space="preserve">
+  <value>适合主色明显的图片。</value>
+</data>
+	<data name="PP_FloydDBSCAN_ToolTip" xml:space="preserve">
+  <value>适合复杂色彩分布。</value>
+</data>
+
+	<!-- OrderedDither -->
+	<data name="PP_OrderedDitherBaseMethod_ToolTip" xml:space="preserve">
+  <value>选择用于生成基础调色板的算法。不同算法对色彩分布和速度有影响。</value>
+</data>
+	<data name="PP_OrderedDitherStrength_ToolTip" xml:space="preserve">
+  <value>抖动误差扩散强度。小数。建议1.0。调低抖动弱，调高抖动强，过高可能噪点多。</value>
+</data>
+	<data name="PP_MatrixSize_ToolTip" xml:space="preserve">
+  <value>Bayer矩阵的大小。2x2：抖动颗粒大，4x4：常用，8x8：颗粒细腻但可能丢失细节。</value>
+</data>
+	<data name="PP_Size2x2_ToolTip" xml:space="preserve">
+  <value>颗粒大，适合特殊风格。</value>
+</data>
+	<data name="PP_Size4x4_ToolTip" xml:space="preserve">
+  <value>常用，平衡细腻与速度。</value>
+</data>
+	<data name="PP_Size8x8_ToolTip" xml:space="preserve">
+  <value>颗粒细腻但可能丢失细节。</value>
+</data>
+
+	<!-- OPTICS -->
+	<data name="PP_OPTICSEpsilon_ToolTip" xml:space="preserve">
+  <value>OPTICS聚类的邻域半径。小数。建议8~64。调低分簇更细致，调高更粗糙。</value>
+</data>
+	<data name="PP_OPTICSMinPts_ToolTip" xml:space="preserve">
+  <value>OPTICS聚类的最小点数。整数。建议3~10。调低更易分出小簇，调高更难分簇。</value>
+</data>
+	<data name="PP_OPTICSMaxSamples_ToolTip" xml:space="preserve">
+  <value>用于聚类的最大像素采样数。整数。建议2000。调低快但不准，调高慢但准。</value>
+</data>
+
+	<!-- FixedBitPalette -->
+	<data name="PP_BitDepth_ToolTip" xml:space="preserve">
+  <value>会覆盖上方的颜色数设置，生成固定位深的调色板。颜色数为2的位深次方。</value>
+</data>
+	<data name="PP_GrayPalette_ToolTip" xml:space="preserve">
+  <value>颜色数为2的位深次方，但每个颜色都是灰度值。</value>
+</data>
+</root>

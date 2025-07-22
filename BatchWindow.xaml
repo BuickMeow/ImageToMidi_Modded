@@ -6,13 +6,14 @@ xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 xmlns:local="clr-namespace:ImageToMidi"
 mc:Ignorable="d"
 xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" 
+        xmlns:lang="clr-namespace:ImageToMidi.Languages"
 TextElement.Foreground="{DynamicResource MaterialDesignBody}"
 TextElement.FontWeight="Regular"
 TextElement.FontSize="13"
 TextOptions.TextFormattingMode="Ideal" 
 TextOptions.TextRenderingMode="Auto"        
-FontFamily="Misans, Microsoft YaHei"
-        Title="批处理" Height="500" Width="900" WindowStyle="None"
+FontFamily="Misans, Microsoft YaHei, Roboto"
+        Title="{x:Static lang:Strings.B_Title}" Height="500" Width="900" WindowStyle="None"
         Background="{DynamicResource MaterialDesignPaper}">
     <Window.Resources>
         <BitmapImage x:Key="Icon" UriSource="i2m.png" />
@@ -128,11 +129,11 @@ FontFamily="Misans, Microsoft YaHei"
                     </Style>
                 </DataGrid.CellStyle-->
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="序号" Binding="{Binding Index}" Width="70"/>
-                    <DataGridTextColumn Header="格式" Binding="{Binding Format}" Width="80"/>
-                    <DataGridTextColumn Header="文件名" Binding="{Binding FileName}" Width="*"/>
-                    <DataGridTextColumn Header="帧数" Binding="{Binding FrameCount}" Width="80"/>
-                    <DataGridTextColumn Header="分辨率" Binding="{Binding Resolution}" Width="120"/>
+                    <DataGridTextColumn Header="{x:Static lang:Strings.BDG_Index}" Binding="{Binding Index}" Width="70"/>
+                    <DataGridTextColumn Header="{x:Static lang:Strings.BDG_Format}" Binding="{Binding Format}" Width="80"/>
+                    <DataGridTextColumn Header="{x:Static lang:Strings.BDG_FileName}" Binding="{Binding FileName}" Width="*"/>
+                    <DataGridTextColumn Header="{x:Static lang:Strings.BDG_FrameCount}" Binding="{Binding FrameCount}" Width="80"/>
+                    <DataGridTextColumn Header="{x:Static lang:Strings.BDG_Resolution}" Binding="{Binding Resolution}" Width="120"/>
                 </DataGrid.Columns>
             </DataGrid>
             <!-- 右侧操作区 -->
@@ -147,8 +148,8 @@ FontFamily="Misans, Microsoft YaHei"
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <Button x:Name="exportAllMidi" Content="批量导出所有MIDI" Click="ExportAllMidi_Click" Padding="0" Margin="0 0 10 5" Grid.Row="0"/>
-                <Button x:Name="mergeMidi" Content="合并为同一个MIDI" Click="MergeMidi_Click" Padding="0" Margin="0 0 10 5" Grid.Row="1"/>
+                <Button x:Name="exportAllMidi" IsEnabled="False" Content="{x:Static lang:Strings.B_ExportAllMidi}" Click="ExportAllMidi_Click" Padding="0" Margin="0 0 10 5" Grid.Row="0"/>
+                <Button x:Name="mergeMidi" IsEnabled="False" Content="{x:Static lang:Strings.B_MergeMidi}" Click="MergeMidi_Click" Padding="0" Margin="0 0 10 5" Grid.Row="1"/>
             </Grid>
         </Grid>
     </DockPanel>

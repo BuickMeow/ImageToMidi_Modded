@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -17,7 +18,11 @@ namespace ImageToMidi
         BitmapPalette Palette;
         byte[] imageData;
         int imageStride;
-        bool cancelled = false;
+        private volatile bool cancelled = false;
+        private readonly object cancellationLock = new object();
+        private Task currentTask;
+        private CancellationTokenSource cancellationTokenSource;
+
         int maxNoteLength;
         bool measureFromStart;
         bool useMaxNoteLength = false;
@@ -38,33 +43,26 @@ namespace ImageToMidi
 
         private readonly FastList<MIDIEvent>[] EventBuffers;
 
-        /*public enum HeightModeEnum
-        {
-            SameAsWidth,
-            OriginalHeight,
-            CustomHeight,
-            OriginalAspectRatio // 新增的枚举值
-        }*/
-
-        //public HeightModeEnum HeightMode { get; private set; }
-        //public int CustomHeight { get; private set; }
-        //public bool ImageFullyGenerated { get; private set; }
         private ResizeAlgorithm resizeAlgorithm = ResizeAlgorithm.AreaResampling;
-        // ConversionProcess.cs 新增字段
         private List<int> keyList = null;
         private bool useKeyList = false;
-        private bool fixedWidth = false; // 是否等宽模式
+        private bool fixedWidth = false;
         private bool whiteKeyClipped = false;
         private bool blackKeyClipped = false;
         private bool whiteKeyFixed = false;
         private bool blackKeyFixed = false;
 
-        //private int originalImageWidth;
-        //private int originalImageHeight;
-
-        //private int previewRotation;
         private int targetHeight;
         private int[] noteCountPerColor;
+
+        private ImageToMidi.GetColorID.PaletteLabCache paletteLabCache;
+
+        // 新增：完成状态标志
+        public bool IsCompleted { get; private set; } = false;
+
+        // 新增：保护锁，确保不会被中途取消
+        private bool isProtected = false;
+        private readonly object protectionLock = new object();
 
         public ConversionProcess(
     BitmapPalette palette,
@@ -74,13 +72,14 @@ namespace ImageToMidi
     int endKey,
     bool measureFromStart,
     int maxNoteLength,
-    int targetHeight, // 新增
+    int targetHeight,
     ResizeAlgorithm resizeAlgorithm,
     List<int> keyList,
     bool whiteKeyFixed = false,
     bool blackKeyFixed = false,
     bool whiteKeyClipped = false,
-    bool blackKeyClipped = false)
+    bool blackKeyClipped = false,
+            ColorIdMethod colorIdMethod = ColorIdMethod.RGB)
         {
             if (palette == null)
                 throw new ArgumentNullException(nameof(palette), "Palette 不能为空");
@@ -88,7 +87,6 @@ namespace ImageToMidi
                 throw new ArgumentNullException(nameof(palette.Colors), "Palette.Colors 不能为空");
             if (palette.Colors.Count == 0)
                 throw new ArgumentException("Palette.Colors 不能为0");
-
 
             this.Palette = palette;
             this.imageData = imageData;
@@ -107,167 +105,278 @@ namespace ImageToMidi
             this.whiteKeyFixed = whiteKeyFixed;
             this.blackKeyFixed = blackKeyFixed;
             this.fixedWidth = whiteKeyFixed || blackKeyFixed;
+            this.colorIdMethod = colorIdMethod;
 
             int tracks = Palette.Colors.Count;
             EventBuffers = new FastList<MIDIEvent>[tracks];
             for (int i = 0; i < tracks; i++)
                 EventBuffers[i] = new FastList<MIDIEvent>();
+
+            var drawingPalette = new List<System.Drawing.Color>(Palette.Colors.Count);
+            foreach (var c in Palette.Colors)
+                drawingPalette.Add(System.Drawing.Color.FromArgb(c.A, c.R, c.G, c.B));
+            paletteLabCache = new ImageToMidi.GetColorID.PaletteLabCache(drawingPalette);
         }
 
-
-        public Task RunProcessAsync(Action callback, Action<double> progressCallback = null)
+        public Task RunProcessAsync(Action callback, Action<double> progressCallback = null, bool enableProtection = true)
         {
-            noteCountPerColor = new int[Palette.Colors.Count];
-            return Task.Run(() =>
+            if (useMaxNoteLength && maxNoteLength <= 0)
+                throw new ArgumentException("maxNoteLength 必须为正整数");
+
+            if (keyList != null && keyList.Count < EffectiveWidth)
+                throw new ArgumentException("keyList 长度不足");
+
+            lock (cancellationLock)
             {
-                int targetWidth = EffectiveWidth; // 等效宽度
-                int height = targetHeight; // 使用传入的
-                //debug输出targetHeight
-                //Debug.WriteLine("targetHeight: " + targetHeight);
-                int width = targetWidth;
+                // 取消之前的任务
+                cancellationTokenSource?.Cancel();
+                cancellationTokenSource = new CancellationTokenSource();
 
-                resizedImage = ResizeImage.MakeResizedImage(imageData, imageStride, targetWidth, height, resizeAlgorithm);
+                cancelled = false;
+                IsCompleted = false;
 
-                long[] lastTimes = new long[Palette.Colors.Count];
-                long[] lastOnTimes = new long[width];
-                int[] colors = new int[width];
-                long time = 0;
-                //debug输出resizedImage的宽高和比例
-                //Console.WriteLine("resizedImage width: " + width + " height: " + height + " ratio: " + (double)width / height);
-
-                for (int i = 0; i < width; i++) colors[i] = -1;
-
-                // 主循环，逐行处理
-                for (int i = height - 1; i >= 0 && !cancelled; i--)
+                lock (protectionLock)
                 {
-                    int rowOffset = i * width * 4;
+                    isProtected = enableProtection;
+                }
+            }
+
+            noteCountPerColor = new int[Palette.Colors.Count];
+
+            var token = cancellationTokenSource.Token;
+            currentTask = Task.Run(() =>
+            {
+                try
+                {
+                    // 检查是否在开始时就被取消
+                    if (token.IsCancellationRequested && !isProtected)
+                        return;
+
+                    int targetWidth = EffectiveWidth;
+                    int height = targetHeight;
+                    int width = targetWidth;
+
+                    resizedImage = ResizeImage.MakeResizedImage(imageData, imageStride, targetWidth, height, resizeAlgorithm);
+
+                    // 进入保护区域 - 一旦开始实际转换就不能被中断
+                    lock (protectionLock)
+                    {
+                        if (enableProtection)
+                            isProtected = true;
+                    }
+
+                    long[] lastTimes = new long[Palette.Colors.Count];
+                    long[] lastOnTimes = new long[width];
+                    int[] colors = new int[width];
+                    long time = 0;
+
+                    for (int i = 0; i < width; i++)
+                    {
+                        colors[i] = -2;
+                        lastOnTimes[i] = useMaxNoteLength ? -maxNoteLength - 1 : 0;
+                    }
+
+                    int[,] colorIndices = new int[height, width];
+
+                    // 并行处理颜色索引
+                    Parallel.For(0, height, i =>
+                    {
+                        if (token.IsCancellationRequested && !isProtected)
+                            return;
+
+                        int rowOffset = i * width * 4;
+                        for (int j = 0; j < width; j++)
+                        {
+                            int pixel = rowOffset + j * 4;
+                            int r = resizedImage[pixel + 2];
+                            int g = resizedImage[pixel + 1];
+                            int b = resizedImage[pixel + 0];
+                            int a = resizedImage[pixel + 3];
+                            if (a < 128)
+                                colorIndices[i, j] = -2;
+                            else
+                            {
+                                int id = GetColorID(r, g, b);
+                                if (id < 0 || id >= Palette.Colors.Count)
+                                    colorIndices[i, j] = -2;
+                                else
+                                    colorIndices[i, j] = id;
+                            }
+                        }
+                    });
+
+                    // 核心转换逻辑 - 在保护模式下不可中断
+                    for (int i = height - 1; i >= 0; i--)
+                    {
+                        // 只有在非保护模式下才检查取消
+                        if (!isProtected && token.IsCancellationRequested)
+                            return;
+
+                        for (int j = 0; j < width; j++)
+                        {
+                            int midiKey;
+                            if (fixedWidth)
+                            {
+                                midiKey = startKey + j;
+                                if (whiteKeyFixed && !MainWindow.IsWhiteKey(midiKey)) { colors[j] = -2; continue; }
+                                if (blackKeyFixed && MainWindow.IsWhiteKey(midiKey)) { colors[j] = -2; continue; }
+                            }
+                            else
+                            {
+                                if (keyList == null || j >= keyList.Count)
+                                {
+                                    colors[j] = -2;
+                                    continue;
+                                }
+                                midiKey = keyList[j];
+                                if (whiteKeyClipped && !MainWindow.IsWhiteKey(midiKey)) { colors[j] = -2; continue; }
+                                if (blackKeyClipped && MainWindow.IsWhiteKey(midiKey)) { colors[j] = -2; continue; }
+                            }
+
+                            int c = colors[j];
+                            int newc = colorIndices[i, j];
+                            bool colorChanged = (newc != c);
+                            bool newNote = false;
+
+                            if (useMaxNoteLength)
+                            {
+                                if (measureFromStart)
+                                {
+                                    long rowFromBottom = height - 1 - i;
+                                    newNote = (rowFromBottom > 0) && (rowFromBottom % maxNoteLength == 0);
+                                }
+                                else
+                                {
+                                    long timeSinceLastOn = time - lastOnTimes[j];
+                                    newNote = timeSinceLastOn >= maxNoteLength;
+                                }
+                            }
+
+                            if (colorChanged || newNote)
+                            {
+                                if (c >= 0 && c < EventBuffers.Length)
+                                {
+                                    EventBuffers[c].Add(new NoteOffEvent((uint)(time - lastTimes[c]), (byte)0, (byte)midiKey));
+                                    lastTimes[c] = time;
+                                }
+
+                                if (newc >= 0 && newc < EventBuffers.Length)
+                                {
+                                    EventBuffers[newc].Add(new NoteOnEvent((uint)(time - lastTimes[newc]), (byte)0, (byte)midiKey, 1));
+                                    lastTimes[newc] = time;
+                                    noteCountPerColor[newc]++;
+                                }
+
+                                colors[j] = newc;
+                                lastOnTimes[j] = time;
+                            }
+                        }
+                        time++;
+
+                        if (progressCallback != null && (i % 32 == 0 || i == 0))
+                        {
+                            double progress = 1.0 - (double)i / height;
+                            progressCallback(progress);
+                        }
+
+                        // 在保护模式下减少取消检查频率
+                        if (!isProtected && (i & 1023) == 0 && token.IsCancellationRequested)
+                            return;
+                    }
+
+                    // 处理最后一行的NoteOff
                     for (int j = 0; j < width; j++)
                     {
+                        int c = colors[j];
                         int midiKey;
                         if (fixedWidth)
                         {
                             midiKey = startKey + j;
-                            if (whiteKeyFixed && !MainWindow.IsWhiteKey(midiKey)) { colors[j] = -2; continue; }
-                            if (blackKeyFixed && MainWindow.IsWhiteKey(midiKey)) { colors[j] = -2; continue; }
+                            if (whiteKeyFixed && !MainWindow.IsWhiteKey(midiKey)) continue;
+                            if (blackKeyFixed && MainWindow.IsWhiteKey(midiKey)) continue;
                         }
                         else
                         {
                             if (keyList == null || j >= keyList.Count)
-                            {
-                                colors[j] = -2;
                                 continue;
-                            }
                             midiKey = keyList[j];
-                            if (whiteKeyClipped && !MainWindow.IsWhiteKey(midiKey)) { colors[j] = -2; continue; }
-                            if (blackKeyClipped && MainWindow.IsWhiteKey(midiKey)) { colors[j] = -2; continue; }
                         }
-
-                        int pixel = rowOffset + j * 4;
-                        int c = colors[j];
-                        int newc = GetColorID(resizedImage[pixel + 2], resizedImage[pixel + 1], resizedImage[pixel + 0]);
-                        if (resizedImage[pixel + 3] < 128) newc = -2;
-                        bool newNote = false;
-                        if (useMaxNoteLength)
+                        if (c >= 0 && c < EventBuffers.Length)
                         {
-                            if (measureFromStart) newNote = (i % maxNoteLength == 0) && c != -1;
-                            else newNote = (time - lastOnTimes[j]) >= maxNoteLength && c != -1;
-                        }
-                        if (newc != c || newNote)
-                        {
-                            if (c != -1 && c != -2)
-                            {
-                                EventBuffers[c].Add(new NoteOffEvent((uint)(time - lastTimes[c]), (byte)0, (byte)midiKey));
-                                lastTimes[c] = time;
-                            }
-                            colors[j] = newc;
-                            c = newc;
-                            if (c != -2)
-                            {
-                                EventBuffers[c].Add(new NoteOnEvent((uint)(time - lastTimes[c]), (byte)0, (byte)midiKey, 1));
-                                lastTimes[c] = time;
-                                lastOnTimes[j] = time;
-                                noteCountPerColor[c]++; // 统计
-                            }
+                            EventBuffers[c].Add(new NoteOffEvent((uint)(time - lastTimes[c]), (byte)0, (byte)midiKey));
+                            lastTimes[c] = time;
                         }
                     }
-                    time++;
 
-                    // 进度回调（每处理一定行数更新一次，防止UI过载）
-                    if (progressCallback != null && (i % 32 == 0 || i == 0))
+                    CountNotes();
+                    progressCallback?.Invoke(1.0);
+
+                    // 标记为已完成
+                    IsCompleted = true;
+
+                    // 清除保护状态
+                    lock (protectionLock)
                     {
-                        double progress = 1.0 - (double)i / height;
-                        progressCallback(progress);
+                        isProtected = false;
                     }
 
-                    if ((i & 1023) == 0 && cancelled)
-                        return;
+                    if (!token.IsCancellationRequested && callback != null)
+                        callback();
                 }
-                if (cancelled) return;
-
-                // 处理最后一行的NoteOff
-                for (int j = 0; j < width; j++)
+                catch (OperationCanceledException)
                 {
-                    int c = colors[j];
-                    int midiKey;
-                    if (fixedWidth)
+                    // 被取消时清理状态
+                    lock (protectionLock)
                     {
-                        midiKey = startKey + j;
-                        if (whiteKeyFixed && !MainWindow.IsWhiteKey(midiKey)) continue;
-                        if (blackKeyFixed && MainWindow.IsWhiteKey(midiKey)) continue;
+                        isProtected = false;
                     }
-                    else
-                    {
-                        if (keyList == null || j >= keyList.Count)
-                            continue;
-                        midiKey = keyList[j];
-                    }
-                    if (c != -1 && c != -2)
-                    {
-                        EventBuffers[c].Add(new NoteOffEvent((uint)(time - lastTimes[c]), (byte)0, (byte)midiKey));
-                        lastTimes[c] = time;
-                    }
+                    IsCompleted = false;
                 }
-
-                CountNotes();
-                Image = GenerateImage();
-
-                // 最终进度100%
-                progressCallback?.Invoke(1.0);
-
-                if (!cancelled && callback != null)
-                    callback();
-                if (resizedImage.Length != width * height * 4)
+                catch (Exception ex)
                 {
-                    throw new InvalidOperationException($"resizedImage 长度不匹配: {resizedImage.Length} != {width}*{height}*4");
+                    // 错误时清理状态
+                    lock (protectionLock)
+                    {
+                        isProtected = false;
+                    }
+                    IsCompleted = false;
+
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show(
+                            $"RunProcessAsync 发生异常：\n{ex.Message}\n\n{ex.StackTrace}",
+                            "ImageToMidi 错误定位",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error
+                        );
+                    });
                 }
-            });
+            }, token);
+
+            return currentTask;
         }
 
+        private ColorIdMethod colorIdMethod = ColorIdMethod.RGB;
         int GetColorID(int r, int g, int b)
         {
-            int smallest = 0;
-            bool first = true;
-            int id = 0;
-            for (int i = 0; i < Palette.Colors.Count; i++)
-            {
-                var col = Palette.Colors[i];
-                int _r = col.R - r;
-                int _g = col.G - g;
-                int _b = col.B - b;
-                int dist = _r * _r + _g * _g + _b * _b;
-                if (dist < smallest || first)
-                {
-                    first = false;
-                    smallest = dist;
-                    id = i;
-                }
-            }
-            return id;
+            return ImageToMidi.GetColorID.FindColorID(colorIdMethod, r, g, b, paletteLabCache);
         }
 
         public void Cancel()
         {
-            cancelled = true;
+            lock (protectionLock)
+            {
+                // 如果在保护模式下，不允许取消
+                if (isProtected)
+                    return;
+            }
+
+            lock (cancellationLock)
+            {
+                cancelled = true;
+                cancellationTokenSource?.Cancel();
+            }
+
             try
             {
                 if (Image != null)
@@ -276,6 +385,46 @@ namespace ImageToMidi
                 }
             }
             catch { }
+        }
+
+        // 新增：强制取消方法（仅在程序关闭时使用）
+        public void ForceCancel()
+        {
+            lock (protectionLock)
+            {
+                isProtected = false;
+            }
+
+            lock (cancellationLock)
+            {
+                cancelled = true;
+                cancellationTokenSource?.Cancel();
+            }
+
+            try
+            {
+                if (Image != null)
+                {
+                    Image.Dispose();
+                }
+            }
+            catch { }
+        }
+
+        // 新增：等待当前任务完成
+        public async Task WaitForCompletionAsync(int timeoutMs = 5000)
+        {
+            if (currentTask != null)
+            {
+                try
+                {
+                    await Task.WhenAny(currentTask, Task.Delay(timeoutMs));
+                }
+                catch
+                {
+                    // 忽略取消异常
+                }
+            }
         }
 
         // 1. 新增：音符遍历与keyIndex计算的复用方法
@@ -345,40 +494,18 @@ namespace ImageToMidi
             }
         }
 
-        // 4. 修改GenerateImage，使用上述方法
-        public Bitmap GenerateImage(Action<double> progressCallback = null)
-        {
-            int width = EffectiveWidth;
-            int height = resizedImage.Length / 4 / width;
-            int scale = 5;
-            Bitmap img = new Bitmap(width * scale + 1, height * scale + 1, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            using (Graphics dg = Graphics.FromImage(img))
-            {
-                int totalTracks = EventBuffers.Length;
-                foreach (var (track, n, keyIndex) in EnumerateDrawableNotes())
-                {
-                    var _c = GetNoteColor(track);
-                    using (var brush = new System.Drawing.SolidBrush(_c))
-                        dg.FillRectangle(brush, keyIndex * scale, height * scale - (int)n.End * scale, scale, (int)n.Length * scale);
-                    using (var pen = new System.Drawing.Pen(System.Drawing.Color.Black))
-                        dg.DrawRectangle(pen, keyIndex * scale, height * scale - (int)n.End * scale, scale, (int)n.Length * scale);
-                    if (cancelled) break;
-                }
-                progressCallback?.Invoke(1.0);
-            }
-            this.Image = img;
-            return img;
-        }
-
         // 5. 修改GeneratePreviewWriteableBitmapAsync，使用上述方法
         public async Task<WriteableBitmap> GeneratePreviewWriteableBitmapAsync(int scale = 8, Action<double> progressCallback = null)
         {
+            // 只有在转换完成后才生成预览
+            if (!IsCompleted)
+                return null;
+
             int width = EffectiveWidth;
             if (resizedImage == null || width <= 0)
                 return null;
             int height = resizedImage.Length / 4 / width;
 
-            // 根据图片高度动态调整scale
             if (height > 7680)
                 scale = 4;
             else if (height > 2160)
@@ -388,18 +515,20 @@ namespace ImageToMidi
 
             int bmpWidth = width * scale + 1;
             int bmpHeight = height * scale + 1;
-            var wb = new WriteableBitmap(bmpWidth, bmpHeight, 96, 96, PixelFormats.Bgra32, null);
 
-            // 1. 收集所有音符（已包含keyIndex和track）
+            WriteableBitmap wb = null;
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                wb = new WriteableBitmap(bmpWidth, bmpHeight, 96, 96, PixelFormats.Bgra32, null);
+            });
+
             var notes = new List<(int track, Note note, int keyIndex)>(EnumerateDrawableNotes());
 
-            // 2. 区块参数
             int blockRows = 32 * scale;
             int blockCount = (bmpHeight + blockRows - 1) / blockRows;
             int[][] blockPixelsList = new int[blockCount][];
             int[] blockHeights = new int[blockCount];
 
-            // 3. 区块级并行填充像素
             Parallel.For(0, blockCount, block =>
             {
                 int yBlockStart = block * blockRows;
@@ -451,7 +580,6 @@ namespace ImageToMidi
                 blockPixelsList[block] = blockPixels;
             });
 
-            // 4. 主线程依次写入区块到WriteableBitmap
             for (int block = 0; block < blockCount; block++)
             {
                 int yBlockStart = block * blockRows;
@@ -471,6 +599,7 @@ namespace ImageToMidi
 
             return wb;
         }
+
         public static void WriteMidi(
     string filename,
     IEnumerable<ConversionProcess> processes,
@@ -487,7 +616,6 @@ namespace ImageToMidi
             int tracks = processList[0].Palette.Colors.Count;
             var palette = processList[0].Palette;
 
-            // 统计总事件数
             int totalEvents = 0;
             foreach (var proc in processList)
             {
@@ -496,7 +624,7 @@ namespace ImageToMidi
                     var eventBuffersField = typeof(ConversionProcess).GetField("EventBuffers", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     var eventBuffers = eventBuffersField.GetValue(proc) as FastList<MIDIEvent>[];
                     totalEvents += eventBuffers[i].Count();
-                    if (useColorEvents) totalEvents++; // 每轨道每帧加一个ColorEvent
+                    if (useColorEvents) totalEvents++;
                 }
             }
             if (totalEvents == 0) totalEvents = 1;
@@ -516,14 +644,12 @@ namespace ImageToMidi
                 for (int i = 0; i < tracks; i++)
                 {
                     writer.InitTrack();
-                    // 只在第一个轨道插入TempoEvent
                     if (i == 0)
                     {
                         writer.Write(new TempoEvent(0, tempo));
                         writtenEvents++;
                     }
 
-                    // 1. 收集所有帧的事件，转换为绝对tick
                     var absEvents = new List<(ulong absTick, MIDIEvent e)>();
                     ulong globalTick = (ulong)startOffset;
                     for (int frameIdx = 0; frameIdx < processList.Count; frameIdx++)
@@ -532,7 +658,6 @@ namespace ImageToMidi
                         var eventBuffersField = typeof(ConversionProcess).GetField("EventBuffers", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                         var eventBuffers = eventBuffersField.GetValue(proc) as FastList<MIDIEvent>[];
 
-                        // ColorEvent
                         if (useColorEvents)
                         {
                             var c = palette.Colors[i];
@@ -546,15 +671,12 @@ namespace ImageToMidi
                             absEvents.Add((tick, e.Clone()));
                         }
 
-                        // 推进globalTick：每帧的tick长度 = 图片高度
-                        int frameHeight = proc.targetHeight; // targetHeight为每帧图片高度
+                        int frameHeight = proc.targetHeight;
                         globalTick += (ulong)(frameHeight * ticksPerPixel);
                     }
 
-                    // 2. 按绝对tick排序
                     absEvents.Sort((a, b) => a.absTick.CompareTo(b.absTick));
 
-                    // 3. 重新计算DeltaTime并写入
                     ulong lastTick = 0;
                     foreach (var (absTick, e) in absEvents)
                     {
@@ -651,14 +773,44 @@ namespace ImageToMidi
             g = Clamp((int)(G * 255.0));
             b = Clamp((int)(B * 255.0));
         }
+        void RgbToHsv(int r, int g, int b, out double h, out double s, out double v)
+        {
+            double R = r / 255.0, G = g / 255.0, B = b / 255.0;
+            double max = Math.Max(R, Math.Max(G, B));
+            double min = Math.Min(R, Math.Min(G, B));
+            v = max;
 
+            double delta = max - min;
+            if (max == 0)
+                s = 0;
+            else
+                s = delta / max;
+
+            if (delta == 0)
+            {
+                h = 0;
+            }
+            else if (max == R)
+            {
+                h = 60 * (((G - B) / delta) % 6);
+            }
+            else if (max == G)
+            {
+                h = 60 * (((B - R) / delta) + 2);
+            }
+            else // max == B
+            {
+                h = 60 * (((R - G) / delta) + 4);
+            }
+            if (h < 0) h += 360;
+        }
         int Clamp(int i)
         {
             if (i < 0) return 0;
             if (i > 255) return 255;
             return i;
         }
-        // 修改CountNotes方法，统计每种颜色的音符数
+
         private void CountNotes()
         {
             NoteCount = 0;
@@ -671,14 +823,10 @@ namespace ImageToMidi
             }
         }
 
-        // 新增方法：获取每种颜色的音符数
         public int GetNoteCountForColor(int colorIndex)
         {
             if (noteCountPerColor == null || colorIndex < 0 || colorIndex >= noteCountPerColor.Length)
                 return 0;
-            //debug输出数组
-            //Console.WriteLine($"NoteCountPerColor: {string.Join(", ", noteCountPerColor)}");
-
             return noteCountPerColor[colorIndex];
         }
     }

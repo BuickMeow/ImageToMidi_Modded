@@ -23,7 +23,7 @@
          TextChanged="TextBox_TextChanged"
          TextInput="TextBox_TextInput"
          Margin="0,0,3,0"
-         FontFamily="Misans, Microsoft YaHei"
+         FontFamily="Misans, Microsoft YaHei, Roboto"
          FontSize="13">
             <TextBox.RenderTransform>
                 <TransformGroup>

@@ -75,6 +75,8 @@ namespace ImageToMidi
 
         private HeightModeEnum heightMode = HeightModeEnum.SameAsWidth;
         private int customHeight = 0;
+        private int originalImageWidth = 0;
+        private int originalImageHeight = 0;
         private CancellationTokenSource _paletteCts; //  用于取消上一次计算
         private ResizeAlgorithm currentResizeAlgorithm = ResizeAlgorithm.AreaResampling; // 默认resizeimage的算法
         private object lastClusterMethodSelectedItem = null;
@@ -132,7 +134,7 @@ namespace ImageToMidi
             Storyboard fadeInBoard = new Storyboard();
             fadeInBoard.Children.Add(fadeIn);
             Storyboard.SetTarget(fadeIn, e);
-            Storyboard.SetTargetProperty(fadeIn, new PropertyPath(Rectangle.OpacityProperty));
+            Storyboard.SetTargetProperty(fadeIn, new PropertyPath(UIElement.OpacityProperty));
 
             e.SetValue(FadeInStoryboard, fadeInBoard);
 
@@ -144,7 +146,7 @@ namespace ImageToMidi
             Storyboard fadeOutBoard = new Storyboard();
             fadeOutBoard.Children.Add(fadeOut);
             Storyboard.SetTarget(fadeOut, e);
-            Storyboard.SetTargetProperty(fadeOut, new PropertyPath(Rectangle.OpacityProperty));
+            Storyboard.SetTargetProperty(fadeOut, new PropertyPath(UIElement.OpacityProperty));
 
             e.SetValue(FadeOutStoryboard, fadeOutBoard);
         }
@@ -194,6 +196,7 @@ namespace ImageToMidi
             MakeFadeInOut(openedImage);
             MakeFadeInOut(genImage);
             MakeFadeInOut(randomSeedBox);
+            MakeFadeInOut(noteSplitLength);
 
             SwitchPanel(PanelType.Manual);
             lastNonSettingsPanelType = PanelType.Manual;
@@ -215,8 +218,9 @@ namespace ImageToMidi
             HighResWidthNumberSelect.Value = highResPreviewWidth;
 
             this.Closing += MainWindow_Closing;
-
-            UpdateNoteLengthModeUI();
+            HeightModeComboBox.SelectionChanged += HeightModeComboBox_SelectionChanged;
+            NoteLengthModeComboBox.SelectionChanged += NoteLengthModeComboBox_SelectionChanged;
+            //UpdateNoteLengthModeUI();
             // JIT预热，异步后台执行
             /*Dispatcher.BeginInvoke(new Action(async () =>
             {
@@ -330,7 +334,8 @@ namespace ImageToMidi
             // 新增：切换到自动选色时刷新聚类算法参数面板
             if (panel == PanelType.Auto)
             {
-                UpdateAlgorithmParamPanel();
+                // 异步刷新参数面板，防止UI阻塞
+                Dispatcher.BeginInvoke(new Action(UpdateAlgorithmParamPanel), System.Windows.Threading.DispatcherPriority.Background);
             }
         }
 
@@ -549,10 +554,10 @@ namespace ImageToMidi
         {
             colPicker.CancelPick();
             ((Storyboard)openedImage.GetValue(FadeInStoryboard)).Begin();
-            await Task.Delay(100);
+            //await Task.Delay(100);
 
             OpenFileDialog open = new OpenFileDialog();
-            open.Filter = "图片/矢量图 (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.svg;*.eps;*.ai;*.pdf)|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.svg;*.eps;*.ai;*.pdf";
+            open.Filter = $"{Languages.Strings.CS_OpenFilter} (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.svg;*.eps;*.ai;*.pdf)|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.svg;*.eps;*.ai;*.pdf";
             if (!(bool)open.ShowDialog()) return;
             openedImagePath = open.FileName;
 
@@ -561,7 +566,7 @@ namespace ImageToMidi
             string[] vectorAllowed = { ".svg" };
             string[] gsVectorAllowed = { ".eps", ".ai", ".pdf" };
 
-            // 清理所有缓存
+            // 清理所有缓存 - 重要：先清理 ZoomableImage 的资源
             openedImage.Source = null;
             openedImage.SetSKBitmap(null);
 
@@ -595,21 +600,29 @@ namespace ImageToMidi
             saveMidi.IsEnabled = false;
             var progress = new Progress<string>(msg => saveMidi.Content = msg);
 
+            BitmapSource src = null;
+
             // 位图流程
             if (bitmapAllowed.Contains(ext))
             {
                 var result = await LoadAndProcessImageAsync(openedImagePath, false, progress);
-                originalImageSrc = result.original;
-                
+                src = result.original;
+                originalImageSrc = src;
+                await UpdateOpenedImageByAngleAndFlip();
 
-                // 只用 SetSKBitmap，不要设置 Source
                 if (originalImageSrc != null)
                 {
-                    var skBitmap = await Task.Run(() => originalImageSrc.ToSKBitmap());
+                    openedImage.Opacity = 0;
+                    originalImageWidth = originalImageSrc.PixelWidth;
+                    originalImageHeight = originalImageSrc.PixelHeight;
+                    var skBitmap = originalImageSrc.ToSKBitmap();
+                    src = null;
                     originalImageSrc = null;
-                    await Dispatcher.InvokeAsync(() => openedImage.SetSKBitmap(skBitmap));
+                    openedImage.SetSKBitmap(skBitmap);
 
-                    // UI 空闲时强制 GC
+                    var fadeIn = (Storyboard)openedImage.GetValue(FadeInStoryboard);
+                    fadeIn?.Begin();
+
                     await Dispatcher.BeginInvoke(new Action(() =>
                     {
                         GC.Collect();
@@ -617,8 +630,8 @@ namespace ImageToMidi
                         GC.Collect();
                     }), System.Windows.Threading.DispatcherPriority.ContextIdle);
                 }
-                await UpdateOpenedImageByAngleAndFlip();
             }
+
             // SVG流程
             else if (vectorAllowed.Contains(ext))
             {
@@ -632,14 +645,18 @@ namespace ImageToMidi
 
                 await Dispatcher.InvokeAsync(() =>
                 {
-                    openedImageSrc = landscapeColorPreviewSrc;
-                    openedImageWidth = openedImageSrc.PixelWidth;
-                    openedImageHeight = openedImageSrc.PixelHeight;
-                    ExtractPixels(openedImageSrc, out openedImagePixels);
+                    src = landscapeColorPreviewSrc;
+                    openedImageSrc = src;
+                    openedImageWidth = src.PixelWidth;
+                    openedImageHeight = src.PixelHeight;
+                    // 新增：赋值原图宽高
+                    originalImageWidth = src.PixelWidth;
+                    originalImageHeight = src.PixelHeight;
+                    ExtractPixels(src, out openedImagePixels);
 
-                    if (openedImageSrc != null)
+                    if (src != null)
                     {
-                        var skBitmap = openedImageSrc.ToSKBitmap();
+                        var skBitmap = src.ToSKBitmap();
                         openedImage.SetSKBitmap(skBitmap);
                     }
                 });
@@ -655,7 +672,8 @@ namespace ImageToMidi
                     return;
                 }
             }
-            // Ghostscript流程
+
+            // Ghostscript流程（EPS/AI/PDF）
             else if (gsVectorAllowed.Contains(ext))
             {
                 if (!IsGhostscriptAvailable())
@@ -669,7 +687,7 @@ namespace ImageToMidi
 
                 try
                 {
-                    openedImageSrc = await Task.Run(() => RenderGsVectorToBitmapSource(openedImagePath, keyWidth, targetHeight));
+                    src = await Task.Run(() => RenderGsVectorToBitmapSource(openedImagePath, keyWidth, targetHeight));
                 }
                 catch (Exception ex)
                 {
@@ -677,21 +695,25 @@ namespace ImageToMidi
                     return;
                 }
 
-                openedImageWidth = openedImageSrc.PixelWidth;
-                openedImageHeight = openedImageSrc.PixelHeight;
-                ExtractPixels(openedImageSrc, out openedImagePixels);
+                openedImageSrc = src;
+                openedImageWidth = src.PixelWidth;
+                openedImageHeight = src.PixelHeight;
+                // 新增：赋值原图宽高
+                originalImageWidth = src.PixelWidth;
+                originalImageHeight = src.PixelHeight;
+                ExtractPixels(src, out openedImagePixels);
 
                 try
                 {
-                    var highResBitmap = await RenderGsVectorHighResPreview(openedImagePath, openedImageSrc, highResPreviewWidth, progress);
+                    var highResBitmap = await RenderGsVectorHighResPreview(openedImagePath, src, highResPreviewWidth, progress);
                     var skBitmap = highResBitmap.ToSKBitmap();
                     openedImage.SetSKBitmap(skBitmap);
                 }
                 catch
                 {
-                    if (openedImageSrc != null)
+                    if (src != null)
                     {
-                        var skBitmap = openedImageSrc.ToSKBitmap();
+                        var skBitmap = src.ToSKBitmap();
                         openedImage.SetSKBitmap(skBitmap);
                     }
                 }
@@ -704,10 +726,10 @@ namespace ImageToMidi
 
             CustomHeightNumberSelect.Value = GetTargetHeight();
 
-            saveMidi.Content = "正在生成色板... 0%";
+            saveMidi.Content = $"{Languages.Strings.CS_GeneratingPalette} 0%";
             await ReloadAutoPalette();
 
-            // 导入图片后，若已勾选灰度，主动生成灰度缩略图
+            // 新增：导入图片后，若已勾选灰度，主动生成灰度缩略图
             if (grayScaleCheckBox.IsChecked == true)
             {
                 if (landscapeColorPreviewSrc != null)
@@ -720,9 +742,11 @@ namespace ImageToMidi
                     portraitGrayPreviewSrc = ToGrayScale(portraitColorPreviewSrc);
                     ExtractPixels(portraitGrayPreviewSrc, out portraitGrayPreviewPixels);
                 }
+                // 关键：让 openedImageSrc/Source 用灰度数据
                 await UpdateOpenedImageByAngleAndFlip();
+                //openedImage.Source = openedImageSrc;
             }
-
+            
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
@@ -744,6 +768,7 @@ namespace ImageToMidi
             {
                 MessageBox.Show("图片加载失败，无法添加到批量列表。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+            
         }
         /// <summary>
         /// 生成 EPS/AI/PDF 文件的 4096 宽度高分辨率预览图
@@ -963,7 +988,7 @@ namespace ImageToMidi
             }
 
             CustomHeightNumberSelect.Value = GetTargetHeight();
-            saveMidi.Content = "正在生成色板... 0%";
+            saveMidi.Content = $"{Languages.Strings.CS_GeneratingPalette} 0%";
             await ReloadAutoPalette();
             // 新增：导入图片后，若已勾选灰度，主动生成灰度缩略图
             if (grayScaleCheckBox.IsChecked == true)
@@ -992,7 +1017,7 @@ namespace ImageToMidi
             if (!bitmapAllowed.Contains(ext))
                 throw new NotSupportedException("仅支持位图格式。");
 
-            progress?.Report("正在读取文件...");
+            progress?.Report($"{Languages.Strings.CS_LoadingFile}");
 
             BitmapSource src = null;
             await Dispatcher.InvokeAsync(() =>
@@ -1009,7 +1034,7 @@ namespace ImageToMidi
                 }
             });
 
-            progress?.Report("图片解码完成");
+            progress?.Report($"{Languages.Strings.CS_DecodingCompleted}");
 
             var thumbnailTask = Task.Run(() => GenerateThumbnailsOptimized(src, progress));
             await thumbnailTask;
@@ -1027,21 +1052,21 @@ namespace ImageToMidi
                 previewPixels = landscapeColorPreviewPixels;
             }
 
-            progress?.Report("缩略图生成完成");
+            progress?.Report($"{Languages.Strings.CS_ThumbGenCompleted}");
             return (src, previewSrc, previewPixels);
         }
 
         private void GenerateThumbnailsOptimized(BitmapSource src, IProgress<string> progress)
         {
             // 只生成彩色缩略图
-            progress?.Report("正在生成横向缩略图...");
+            progress?.Report($"{Languages.Strings.CS_GeneratingLandscape}");
             var landscapeColor = Downsample(src, null, 256, p =>
-                progress?.Report($"横向彩色缩略图... {(int)(p * 100)}%"));
+                progress?.Report($"{Languages.Strings.CS_GeneratingLandscape} {(int)(p * 100)}%"));
             ExtractPixels(landscapeColor, out var landscapeColorPixels);
 
-            progress?.Report("正在生成纵向缩略图...");
+            progress?.Report($"{Languages.Strings.CS_GeneratingPortrait}");
             var portraitColor = Downsample(src, 256, null, p =>
-                progress?.Report($"纵向彩色缩略图... {(int)(p * 100)}%"));
+                progress?.Report($"{Languages.Strings.CS_GeneratingPortrait} {(int)(p * 100)}%"));
             ExtractPixels(portraitColor, out var portraitColorPixels);
 
             // 只缓存彩色缩略图
@@ -1056,7 +1081,7 @@ namespace ImageToMidi
             portraitGrayPreviewSrc = null;
             portraitGrayPreviewPixels = null;
 
-            progress?.Report("彩色缩略图生成完成");
+            progress?.Report($"{Languages.Strings.CS_ThumbGenCompleted}");
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
@@ -1129,13 +1154,13 @@ namespace ImageToMidi
         private void GenerateSVGThumbnails(
     string vectorPath, int targetWidth, int targetHeight, int angle = 0, bool flip = false, IProgress<string> progress = null)
         {
-            progress?.Report("1/3 正在解析SVG...");
+            progress?.Report($"{Languages.Strings.CS_SVGAnalyzing}");
 
             var svgDocument = Svg.SvgDocument.Open(vectorPath);
             if (svgDocument == null)
                 throw new Exception("SVG文件解析失败");
 
-            progress?.Report("2/3 正在渲染SVG...");
+            progress?.Report($"{Languages.Strings.CS_SVGRendering}");
             // 获取SVG的ViewBox
             var viewBox = svgDocument.ViewBox;
             float viewBoxX = viewBox.MinX;
@@ -1175,7 +1200,7 @@ namespace ImageToMidi
                 svgDocument.Draw(graphics);
 
                 // 转换为WPF BitmapSource
-                progress?.Report("3/3 正在转换为WPF位图...");
+                progress?.Report($"{Languages.Strings.CS_SVGConverting}");
                 var bitmapSource = ConvertBitmapToBitmapSource(bitmap);
                 bitmapSource.Freeze();
 
@@ -1183,7 +1208,7 @@ namespace ImageToMidi
                 ExtractPixels(bitmapSource, out landscapeColorPreviewPixels);
             }
 
-            progress?.Report("SVG缩略图生成完成");
+            progress?.Report($"{Languages.Strings.CS_SVGCompleted}");
         }
 
         // 辅助方法：System.Drawing.Bitmap转WPF BitmapSource
@@ -1230,7 +1255,7 @@ namespace ImageToMidi
         }
         private BitmapSource RenderGsVectorToBitmapSource(string filePath, int targetWidth, int targetHeight, IProgress<string> progress = null)
         {
-            progress?.Report("1/4 解析BoundingBox...");
+            progress?.Report($"{Languages.Strings.CS_GSBoundingBox}");
             string ext = System.IO.Path.GetExtension(filePath).ToLowerInvariant();
             int rawW = targetWidth, rawH = targetHeight;
             if (ext == ".eps" || ext == ".ai")
@@ -1277,7 +1302,7 @@ namespace ImageToMidi
                     rawH = (int)Math.Round(bboxH);
                 }
             }
-            progress?.Report("2/4 调用Ghostscript渲染...");
+            progress?.Report($"{Languages.Strings.CS_GSRendering}");
             // 1. 限制最小渲染尺寸
             int minRenderSize = 16; // Ghostscript推荐10以上，16更保险
             int renderWidth = Math.Max(targetWidth, minRenderSize);
@@ -1329,7 +1354,7 @@ namespace ImageToMidi
                     throw new Exception("Ghostscript渲染失败: " + error);
                 }
             }
-            progress?.Report("3/4 读取PNG结果...");
+            progress?.Report($"{Languages.Strings.CS_GSReading}");
             BitmapSource bmp;
             using (var fs = new FileStream(tempPng, FileMode.Open, FileAccess.Read))
             {
@@ -1342,7 +1367,7 @@ namespace ImageToMidi
 
             bmp.Freeze();
 
-            progress?.Report("4/4 完成缩放...");
+            progress?.Report($"{Languages.Strings.CS_GSScaling}");
             // 3. 如果目标尺寸比渲染尺寸小，WPF再缩放
             if (targetWidth < renderWidth || targetHeight < renderHeight)
             {
@@ -1674,7 +1699,7 @@ namespace ImageToMidi
             try
             {
                 saveMidi.IsEnabled = false;
-                saveMidi.Content = "正在生成色板... 0%";
+                saveMidi.Content = $"{Languages.Strings.CS_GeneratingPalette}";
                 await Task.Run(() =>
                 {
                     // 检查是否已取消
@@ -1752,7 +1777,7 @@ namespace ImageToMidi
                                 Dispatcher.BeginInvoke(new Action(() =>
                                 {
                                     int percent = (int)(progress * 100);
-                                    saveMidi.Content = $"正在生成色板... {percent}%";
+                                    saveMidi.Content = $"{Languages.Strings.CS_GeneratingPalette} {percent}%";
                                 }));
                             }
                         }
@@ -1954,7 +1979,7 @@ namespace ImageToMidi
                         // 设置ToolTip
                         var tooltip = new ToolTip
                         {
-                            Content = $"HEX: {hex}\n音符数: {noteCount}"
+                            Content = $"{Languages.Strings.CS_TrackHex} {hex}\n{Languages.Strings.CS_TrackNoteCount} {noteCount}"
                         };
                         rect.ToolTip = tooltip;
 
@@ -1993,71 +2018,48 @@ namespace ImageToMidi
                     return Enumerable.Range(start, end - start + 1).ToList();
             }
         }
-        private void ReloadPreview()
+        private async void ReloadPreview()
         {
-            if (!IsInitialized) return;
-            if (openedImagePixels == null) return;
-            if (openedImageSrc == null) return;
-            if (colPicker == null) return;
-            if (convert != null) convert.Cancel();
+            if (!IsInitialized || openedImagePixels == null || openedImageSrc == null || colPicker == null)
+                return;
+            if (noteLengthMode != NoteLengthMode.Unlimited && (int)noteSplitLength.Value <= 0)
+            {
+                MessageBox.Show("分割长度必须为正整数！", "参数错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 等待当前转换完成（最多等待3秒）
+            if (convert != null)
+            {
+                await convert.WaitForCompletionAsync(3000);
+                convert.Cancel();
+            }
 
             midiExported = false;
-            // 获取当前聚类方法
+
             var selectedItem = ClusterMethodComboBox.SelectedItem as ComboBoxItem;
             string methodTag = selectedItem?.Tag as string ?? "";
 
-            // 只在抖动算法下显示抖动像素
-            byte[] previewPixels;
-            if ((methodTag == "FloydSteinbergDither" || methodTag == "OrderedDither") && ditheredImagePixels != null)
-                previewPixels = ditheredImagePixels;
-            else
-                previewPixels = openedImagePixels;
+            byte[] previewPixels = ((methodTag == "FloydSteinbergDither" || methodTag == "OrderedDither") && ditheredImagePixels != null)
+                ? ditheredImagePixels
+                : openedImagePixels;
 
             if (previewPixels == null) return;
 
-            // 修复：根据当前面板决定用哪个色板，并增加验证
-            // palette 选择逻辑融合
             BitmapPalette palette = null;
             PanelType panelToUse = currentPanel;
             if (currentPanel == PanelType.Settings && lastNonSettingsPanelType.HasValue)
                 panelToUse = lastNonSettingsPanelType.Value;
 
             if (panelToUse == PanelType.Manual)
-            {
                 palette = colPicker.GetPalette();
-            }
             else if (panelToUse == PanelType.Auto)
-            {
                 palette = chosenPalette;
-            }
             else
-            {
-                // 其它情况直接返回
                 return;
-            }
-
-            // 如果没有有效调色板，清空界面并返回
-            /*if (!hasValidPalette)
-            {
-                genImage.Source = null;
-                previewTipTextBlock.Visibility = Visibility.Visible;
-                if (convert != null)
-                {
-                    convert.Cancel();
-                    convert = null;
-                }
-                midiExported = false;
-                lastExportedMidiPath = null;
-                UpdateSaveMidiButton();
-                return;
-            }*/
 
             if (palette == null || palette.Colors == null || palette.Colors.Count == 0)
-            {
-                // 可选：弹窗提示
-                // MessageBox.Show("色板未生成，请先生成色板。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
-            }
 
             int targetHeight = GetTargetHeight();
             var keyList = GetKeyList();
@@ -2067,21 +2069,13 @@ namespace ImageToMidi
             bool blackKeyClipped = (whiteKeyMode == WhiteKeyMode.BlackKeysClipped);
 
             if (whiteKeyMode == WhiteKeyMode.WhiteKeysFilled || whiteKeyMode == WhiteKeyMode.BlackKeysFilled)
-            {
                 whiteKeyFixed = blackKeyFixed = whiteKeyClipped = blackKeyClipped = false;
-            }
 
             int effectiveWidth = GetEffectiveKeyWidth();
-
-            //bool useNoteLengthChecked = useNoteLength.IsChecked == true;
-            //int maxNoteLength = (int)noteSplitLength.Value;
-            //bool measureFromStart = startOfImage.IsChecked == true;
-
             bool useNoteLengthChecked = noteLengthMode != NoteLengthMode.Unlimited;
             int maxNoteLength = (int)noteSplitLength.Value;
             bool measureFromStart = noteLengthMode == NoteLengthMode.SplitToGrid;
 
-            //Debug.WriteLine($"[ReloadPreview] effectiveWidth={effectiveWidth}, targetHeight={targetHeight}");
             convert = new ConversionProcess(
                 palette,
                 previewPixels,
@@ -2090,15 +2084,15 @@ namespace ImageToMidi
                 (int)lastKeyNumber.Value + 1,
                 measureFromStart,
                 useNoteLengthChecked ? maxNoteLength : 0,
-                targetHeight, // 直接传入
+                targetHeight,
                 currentResizeAlgorithm,
                 keyList,
                 whiteKeyClipped,
                 blackKeyClipped,
                 whiteKeyFixed,
-                blackKeyFixed
+                blackKeyFixed,
+                currentColorIdMethod
             );
-
             convert.EffectiveWidth = effectiveWidth;
 
             if (!(bool)genColorEventsCheck.IsChecked)
@@ -2108,39 +2102,33 @@ namespace ImageToMidi
             }
 
             saveMidi.IsEnabled = false;
-            saveMidi.Content = "正在生成音符... 0%";
+            saveMidi.Content = $"{Languages.Strings.CS_GeneratingNotes} 0%";
+            genImage.Source = null;
+
             double lastReport = 0;
             DateTime lastReportTime = DateTime.Now;
 
-            genImage.Source = null;
-
-            convert.RunProcessAsync(() =>
+            // 启用保护模式确保完整转换
+            await convert.RunProcessAsync(async () =>
             {
-                // 音符生成完毕后，立即切换到“正在生成图片...0%”
-                Dispatcher.Invoke(() =>
-                {
-                    saveMidi.Content = "正在生成图片... 0%";
-                });
-
-                // 图片生成（带进度）
-                var img = convert.GenerateImage(progress =>
+                Dispatcher.Invoke(() => saveMidi.Content = $"{Languages.Strings.CS_GeneratingImage} 0%");
+                var wb = await convert.GeneratePreviewWriteableBitmapAsync(8, progress =>
                 {
                     int percent = (int)(progress * 100);
-                    Dispatcher.Invoke(() =>
-                    {
-                        saveMidi.Content = $"正在生成图片... {percent}%";
-                    });
+                    Dispatcher.Invoke(() => saveMidi.Content = $"{Languages.Strings.CS_GeneratingImage} {percent}%");
                 });
-
-                // 图片生成完毕
                 Dispatcher.Invoke(() =>
                 {
-                    saveMidi.Content = "正在生成图片... 100%";
+                    saveMidi.Content = $"{Languages.Strings.CS_GeneratingImage} 100%";
                     ReloadPalettePreview();
+                    genImage.Source = wb;
                     ShowPreview();
                     midiExported = false;
                     lastExportedMidiPath = null;
                     UpdateSaveMidiButton();
+                    genImage.Opacity = 0;
+                    var fadeIn = (Storyboard)genImage.GetValue(FadeInStoryboard);
+                    fadeIn?.Begin();
                 });
             },
             progress =>
@@ -2150,13 +2138,12 @@ namespace ImageToMidi
                     lastReport = progress;
                     lastReportTime = DateTime.Now;
                     int percent = (int)(progress * 100);
-                    Dispatcher.Invoke(() =>
-                    {
-                        saveMidi.Content = $"正在生成音符... {percent}%";
-                    });
+                    Dispatcher.Invoke(() => saveMidi.Content = $"{Languages.Strings.CS_GeneratingNotes} {percent}%");
                 }
-            });
-            genImage.Source = null;//  清空图片
+            },
+            enableProtection: true); // 启用保护模式
+
+            genImage.Source = null;
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
@@ -2176,22 +2163,22 @@ namespace ImageToMidi
                 case HeightModeEnum.CustomHeight:
                     return customHeight;
                 case HeightModeEnum.OriginalAspectRatio:
-                    if (originalImageSrc == null)
+                    if (openedImageSrc == null)
                     {
                         return 0;
                     }
                     if (previewRotation == 90 || previewRotation == 270)
                     {
-                        double aspectRatio = (double)originalImageSrc.PixelWidth / originalImageSrc.PixelHeight;
+                        double aspectRatio = (double)originalImageWidth / originalImageHeight;
                         return (int)(effectiveWidth * aspectRatio);
                     }
                     else
                     {
-                        double aspectRatio = (double)originalImageSrc.PixelHeight / originalImageSrc.PixelWidth;
+                        double aspectRatio = (double)originalImageHeight / originalImageWidth;
                         return (int)(effectiveWidth * aspectRatio);
                     }
                 default:
-                    return originalImageSrc != null ? originalImageSrc.PixelHeight : openedImageHeight;
+                    return originalImageSrc != null ? originalImageHeight : openedImageHeight;
             }
         }
         private async void ShowPreview()
@@ -2217,7 +2204,9 @@ namespace ImageToMidi
             midiExported = false;
             lastExportedMidiPath = null;
             UpdateSaveMidiButton();
-
+            /*genImage.Opacity = 0;
+            var fadeIn = (Storyboard)genImage.GetValue(FadeInStoryboard);
+            fadeIn?.Begin();*/
             //await FakeFlip();
             // 也可在此处GC，防止极端情况下内存未释放
             GC.Collect();
@@ -2237,7 +2226,7 @@ namespace ImageToMidi
 
             colPicker.CancelPick();
             SaveFileDialog save = new SaveFileDialog();
-            save.Filter = "MIDI文件 (*.mid)|*.mid";
+            save.Filter = $"{Languages.Strings.CS_MidiFile} (*.mid)|*.mid";
             if (!(bool)save.ShowDialog()) return;
             try
             {
@@ -2245,7 +2234,7 @@ namespace ImageToMidi
                 {
                     bool colorEvents = (bool)genColorEventsCheck.IsChecked;
                     saveMidi.IsEnabled = false;
-                    saveMidi.Content = "正在导出 MIDI... 0%";
+                    saveMidi.Content = $"{Languages.Strings.CS_ExportingMidi} 0%";
 
                     // 先在UI线程读取所有需要的值
                     int ticksPerPixelValue = (int)ticksPerPixel.Value;
@@ -2282,11 +2271,11 @@ namespace ImageToMidi
                                             midiExported = true;
                                             lastExportedMidiPath = midiPath;
                                             saveMidi.IsEnabled = true;
-                                            saveMidi.Content = "导出成功！点击打开所在文件夹";
+                                            saveMidi.Content = $"{Languages.Strings.CS_ExportingFolder}";
                                         }
                                         else
                                         {
-                                            saveMidi.Content = $"正在导出 MIDI... {percent}%";
+                                            saveMidi.Content = $"{Languages.Strings.CS_ExportingMidi} {percent}%";
                                         }
                                     }));
                                 }
@@ -2297,7 +2286,7 @@ namespace ImageToMidi
                     lastExportedMidiPath = midiPath; // 记录导出路径
 
                     saveMidi.IsEnabled = true;
-                    saveMidi.Content = "导出成功！点击打开所在文件夹";
+                    saveMidi.Content = $"{Languages.Strings.CS_ExportingFolder}";
                 }
             }
             catch (Exception ex)
@@ -2413,7 +2402,7 @@ namespace ImageToMidi
                 }
                 catch
                 {
-                    errorTextBlock.Text = "色号无效";
+                    //errorTextBlock.Text = "色号无效";
                     errorTextBlock.Visibility = Visibility.Visible; // 显示错误信息
                     return;
                 }
@@ -2432,7 +2421,7 @@ namespace ImageToMidi
             }
             catch
             {
-                errorTextBlock.Text = "色号无效";
+                //errorTextBlock.Text = "色号无效";
                 errorTextBlock.Visibility = Visibility.Visible; // 显示错误信息
                 return;
             }
@@ -2453,7 +2442,7 @@ namespace ImageToMidi
                 ReloadPreview();
             }
         }
-        private async void HeightModeButton_Click(object sender, RoutedEventArgs e)
+        /*private async void HeightModeButton_Click(object sender, RoutedEventArgs e)
         {
             CustomHeightNumberSelect.IsEnabled = !CustomHeightNumberSelect.IsEnabled;
             if (heightMode == HeightModeEnum.SameAsWidth)
@@ -2488,24 +2477,59 @@ namespace ImageToMidi
             }
             await ReloadVectorBitmapAsync(); // 新增
             ReloadPreview();
+        }*/
+        private async void HeightModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (HeightModeComboBox == null || CustomHeightNumberSelect == null)
+                return;
+
+            if (HeightModeComboBox.SelectedItem is ComboBoxItem item)
+            {
+                string tag = item.Tag as string;
+                switch (tag)
+                {
+                    case "SameAsWidth":
+                        heightMode = HeightModeEnum.SameAsWidth;
+                        CustomHeightNumberSelect.IsEnabled = false;
+                        CustomHeightNumberSelect.Value = GetEffectiveKeyWidth();
+                        break;
+                    case "OriginalHeight":
+                        heightMode = HeightModeEnum.OriginalHeight;
+                        CustomHeightNumberSelect.IsEnabled = false;
+                        CustomHeightNumberSelect.Value = openedImageHeight;
+                        break;
+                    case "CustomHeight":
+                        heightMode = HeightModeEnum.CustomHeight;
+                        CustomHeightNumberSelect.IsEnabled = true;
+                        customHeight = (int)CustomHeightNumberSelect.Value;
+                        break;
+                    case "OriginalAspectRatio":
+                        heightMode = HeightModeEnum.OriginalAspectRatio;
+                        CustomHeightNumberSelect.IsEnabled = false;
+                        CustomHeightNumberSelect.Value = GetTargetHeight();
+                        break;
+                }
+                await ReloadVectorBitmapAsync();
+                ReloadPreview();
+            }
         }
         private void UpdateSaveMidiButton()
         {
             if (midiExported)
             {
                 saveMidi.IsEnabled = true;
-                saveMidi.Content = "导出成功";
+                saveMidi.Content = $"{Languages.Strings.CS_ExportingCompleted}";
                 return;
             }
             if (convert != null && convert.NoteCount > 0)
             {
                 saveMidi.IsEnabled = true;
-                saveMidi.Content = $"导出 MIDI（音符数 {convert.NoteCount}）";
+                saveMidi.Content = $"{Languages.Strings.CS_ExportNotecount1} {convert.NoteCount} {Languages.Strings.CS_ExportNotecount2}";
             }
             else
             {
                 saveMidi.IsEnabled = false;
-                saveMidi.Content = "请稍侯...";
+                saveMidi.Content = $"{Languages.Strings.CS_PleaseWait}";
             }
         }
         private void ClusterMethodComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -2515,6 +2539,38 @@ namespace ImageToMidi
             _ = ReloadAutoPalette();
         }
 
+        private ColorIdMethod currentColorIdMethod = ColorIdMethod.RGB; // 默认值
+        private void ColorIdMethodComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selectedItem = ColorIdMethodComboBox.SelectedItem as ComboBoxItem;
+            if (selectedItem != null)
+            {
+                var tag = selectedItem.Tag as string;
+                switch (tag)
+                {
+                    case "RGB":
+                        currentColorIdMethod = ColorIdMethod.RGB;
+                        break;
+                    case "HSV":
+                        currentColorIdMethod = ColorIdMethod.HSV;
+                        break;
+                    case "HSL":
+                        currentColorIdMethod = ColorIdMethod.HSL;
+                        break;
+                    case "Lab":
+                        currentColorIdMethod = ColorIdMethod.Lab;
+                        break;
+                    case "CIEDE2000":
+                        currentColorIdMethod = ColorIdMethod.CIEDE2000;
+                        break;
+                    // 未来可扩展更多算法
+                    default:
+                        currentColorIdMethod = ColorIdMethod.RGB;
+                        break;
+                }
+                ReloadPreview(); // 切换算法时自动刷新预览
+            }
+        }
 
         private void ResizeMethodComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -2673,29 +2729,29 @@ namespace ImageToMidi
             switch (whiteKeyMode)
             {
                 case WhiteKeyMode.AllKeys:
-                    WhiteKeyModeButton.Content = $"{total}键";
+                    WhiteKeyModeButton.Content = $"{total}{Languages.Strings.CS_Keys}";
                     break;
                 case WhiteKeyMode.WhiteKeysFilled:
-                    WhiteKeyModeButton.Content = $"{whiteCount}白键(填充)";
+                    WhiteKeyModeButton.Content = $"{whiteCount}{Languages.Strings.CS_KeysWhiteFilled}";
                     break;
                 case WhiteKeyMode.WhiteKeysClipped:
-                    WhiteKeyModeButton.Content = $"{whiteCount}白键(裁剪)";
+                    WhiteKeyModeButton.Content = $"{whiteCount}{Languages.Strings.CS_KeysWhiteClipped}";
                     break;
                 case WhiteKeyMode.WhiteKeysFixed:
-                    WhiteKeyModeButton.Content = $"{whiteCount}白键(等宽)";
+                    WhiteKeyModeButton.Content = $"{whiteCount}{Languages.Strings.CS_KeysWhiteFixed}";
                     break;
                 case WhiteKeyMode.BlackKeysFilled:
-                    WhiteKeyModeButton.Content = $"{blackCount}黑键(填充)";
+                    WhiteKeyModeButton.Content = $"{blackCount}{Languages.Strings.CS_KeysBlackFilled}";
                     break;
                 case WhiteKeyMode.BlackKeysClipped:
-                    WhiteKeyModeButton.Content = $"{blackCount}黑键(裁剪)";
+                    WhiteKeyModeButton.Content = $"{blackCount}{Languages.Strings.CS_KeysBlackClipped}";
                     break;
                 case WhiteKeyMode.BlackKeysFixed:
-                    WhiteKeyModeButton.Content = $"{blackCount}黑键(等宽)";
+                    WhiteKeyModeButton.Content = $"{blackCount}{Languages.Strings.CS_KeysBlackFixed}";
                     break;
             }
         }
-        private void NoteLengthModeButton_Click(object sender, RoutedEventArgs e)
+        /*private void NoteLengthModeButton_Click(object sender, RoutedEventArgs e)
         {
             // 循环切换模式
             noteLengthMode = (NoteLengthMode)(((int)noteLengthMode + 1) % 3);
@@ -2719,6 +2775,62 @@ namespace ImageToMidi
                     noteSplitLength.Visibility = Visibility.Visible;
                     break;
             }
+        }*/
+        private void NoteLengthModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (NoteLengthModeComboBox == null || noteSplitLength == null)
+                return;
+
+            if (NoteLengthModeComboBox.SelectedItem is ComboBoxItem item)
+            {
+                string tag = item.Tag as string;
+                switch (tag)
+                {
+                    case "Unlimited":
+                        noteLengthMode = NoteLengthMode.Unlimited;
+                        var fadeOut = (Storyboard)noteSplitLength.GetValue(FadeOutStoryboard);
+                        if (fadeOut != null)
+                        {
+                            fadeOut.Completed -= FadeOut_Completed;
+                            fadeOut.Completed += FadeOut_Completed;
+                            fadeOut.Begin();
+                        }
+                        else
+                        {
+                            noteSplitLength.Visibility = Visibility.Collapsed;
+                        }
+                        break;
+                    case "FlowWithColor":
+                    case "SplitToGrid":
+                        noteLengthMode = tag == "FlowWithColor" ? NoteLengthMode.FlowWithColor : NoteLengthMode.SplitToGrid;
+                        if (noteSplitLength.Value <= 0) { 
+                            noteSplitLength.Value = 1;
+                            //输出提示信息
+                            MessageBox.Show("分割长度不能小于等于0，已自动调整为1。");
+                        } // 或者你喜欢的默认值
+                        // 只有在控件原本是隐藏时才执行淡入动画
+                        if (noteSplitLength.Visibility != Visibility.Visible)
+                        {
+                            noteSplitLength.Visibility = Visibility.Visible;
+                            noteSplitLength.Opacity = 1;
+                            var fadeIn = (Storyboard)noteSplitLength.GetValue(FadeInStoryboard);
+                            fadeIn?.Begin();
+                        }
+                        // 如果已经可见，则不重复动画
+                        break;
+                }
+                ReloadPreview();
+            }
+        }
+
+        // 新增事件处理方法
+        private void FadeOut_Completed(object sender, EventArgs e)
+        {
+            noteSplitLength.Visibility = Visibility.Collapsed;
+            // 解绑，防止多次触发
+            var fadeOut = (Storyboard)noteSplitLength.GetValue(FadeOutStoryboard);
+            if (fadeOut != null)
+                fadeOut.Completed -= FadeOut_Completed;
         }
         private BitmapSource ToGrayScale(BitmapSource src, Action<double> progress = null)
         {
@@ -3113,6 +3225,11 @@ namespace ImageToMidi
             {
                 batchWindow = new BatchWindow(BatchFileList);
             }
+            // 如果窗口已最小化，则恢复为正常状态
+            if (batchWindow.WindowState == WindowState.Minimized)
+            {
+                batchWindow.WindowState = WindowState.Normal;
+            }
             if (!batchWindow.IsVisible)
             {
                 batchWindow.Show();
@@ -3252,22 +3369,69 @@ namespace ImageToMidi
                 string imgPath = item.FullPath ?? item.FileName;
                 if (!File.Exists(imgPath)) continue;
 
-                // 1. 读取图片
-                byte[] imageBytes = await Task.Run(() => File.ReadAllBytes(imgPath));
                 BitmapSource src = null;
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                string ext = System.IO.Path.GetExtension(imgPath).ToLowerInvariant();
+
+                // 1. 位图格式
+                string[] bitmapAllowed = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp" };
+                string[] svgAllowed = { ".svg" };
+                string[] gsVectorAllowed = { ".eps", ".ai", ".pdf" };
+
+                if (bitmapAllowed.Contains(ext))
                 {
-                    using (var ms = new MemoryStream(imageBytes))
+                    byte[] imageBytes = await Task.Run(() => File.ReadAllBytes(imgPath));
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
-                        var bmp = new BitmapImage();
-                        bmp.BeginInit();
-                        bmp.CacheOption = BitmapCacheOption.OnLoad;
-                        bmp.StreamSource = ms;
-                        bmp.EndInit();
-                        bmp.Freeze();
-                        src = bmp;
-                    }
-                });
+                        using (var ms = new MemoryStream(imageBytes))
+                        {
+                            var bmp = new BitmapImage();
+                            bmp.BeginInit();
+                            bmp.CacheOption = BitmapCacheOption.OnLoad;
+                            bmp.StreamSource = ms;
+                            bmp.EndInit();
+                            bmp.Freeze();
+                            src = bmp;
+                        }
+                    });
+                }
+                // 2. SVG格式
+                else if (svgAllowed.Contains(ext))
+                {
+                    int keyWidth = GetEffectiveKeyWidth();
+                    int targetHeightBatch = GetTargetHeight();
+                    await Task.Run(() =>
+                    {
+                        var svgDoc = Svg.SvgDocument.Open(imgPath);
+                        using (var bitmap = new System.Drawing.Bitmap(keyWidth, targetHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                        using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+                        {
+                            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+                            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                            graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.None;
+                            graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+                            graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixel;
+                            var viewBox = svgDoc.ViewBox;
+                            graphics.TranslateTransform(-viewBox.MinX, -viewBox.MinY);
+                            graphics.ScaleTransform((float)keyWidth / viewBox.Width, (float)targetHeight / viewBox.Height);
+                            svgDoc.Draw(graphics);
+                            src = ConvertBitmapToBitmapSource(bitmap);
+                            src.Freeze();
+                        }
+                    });
+                }
+                // 3. EPS/AI/PDF格式
+                else if (gsVectorAllowed.Contains(ext))
+                {
+                    int keyWidth = GetEffectiveKeyWidth();
+                    int targetHeightBatch = GetTargetHeight();
+                    src = await Task.Run(() => RenderGsVectorToBitmapSource(imgPath, keyWidth, targetHeight));
+                }
+                else
+                {
+                    // 不支持的格式，跳过
+                    continue;
+                }
 
                 // 2. 旋转/翻转/灰度
                 int rot = previewRotation;

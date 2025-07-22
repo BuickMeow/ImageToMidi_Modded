@@ -1,5 +1,9 @@
-﻿<Weavers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="FodyWeavers.xsd">
+<Weavers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="FodyWeavers.xsd">
 	<Costura>
+    	<!--IncludeAssemblies>
+    	  ImageToMidi.resources.dll
+    	</IncludeAssemblies-->
+		<CreateTemporaryAssemblies>true</CreateTemporaryAssemblies>
 		<Unmanaged64Assemblies>
 			libSkiaSharp
 		</Unmanaged64Assemblies>

@@ -77,11 +77,11 @@ namespace ImageToMidi
             {
                 var c = colors[i];
                 int noteCount = GetNoteCountForColor != null ? GetNoteCountForColor(i) : 0;
-                return $"#{c.R:X2}{c.G:X2}{c.B:X2}{c.A:X2}\n红:{c.R}\n绿:{c.G}\n蓝:{c.B}\n不透明度:{c.A}\n音符数: {noteCount}";
+                return $"#{c.R:X2}{c.G:X2}{c.B:X2}{c.A:X2}\nR:{c.R}\nG:{c.G}\nB:{c.B}\nA:{c.A}\n{Languages.Strings.CS_TrackNoteCount} {noteCount}";
             }
             else
             {
-                return "未设置颜色";
+                return $"{Languages.Strings.CP_NoColorSelected}";
             }
         }
 
