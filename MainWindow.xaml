@@ -86,13 +86,76 @@
                 <Grid Background="#37474F">
                     <!--<Image x:Name="openedImage" RenderOptions.BitmapScalingMode="NearestNeighbor" MouseDown="OpenedImage_MouseDown"/>-->
                     <local:ZoomableImage
-    ClickableColors="True"
-    ColorClicked="OpenedImage_ColorClicked"
-    ScalingMode="NearestNeighbor"
-    x:Name="openedImage"
-    AllowDrop="True"
-    DragEnter="OpenedImage_DragEnter"
-    Drop="OpenedImage_Drop"/>
+                        ClickableColors="True"
+                        ColorClicked="OpenedImage_ColorClicked"
+                        ColorAreaSelected="OpenedImage_ColorAreaSelected"
+                        ScalingMode="NearestNeighbor"
+                        x:Name="openedImage"
+                        AllowDrop="True"
+                        DragEnter="OpenedImage_DragEnter"
+                        Drop="OpenedImage_Drop"/>
+
+                    <!-- GIF/WEBP 帧导航控件 -->
+                    <Border x:Name="frameNavigationPanel" 
+                        Visibility="Collapsed"
+                        Background="{DynamicResource PrimaryHueMidBrush}" 
+                        CornerRadius="4"
+                        Width="120" 
+                        Height="30"
+                        HorizontalAlignment="Left" 
+                        VerticalAlignment="Bottom"
+                        Margin="10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 左箭头按钮 -->
+                            <Button x:Name="prevFrameButton" 
+                                Grid.Column="0"
+                                Width="24" 
+                                Height="24"
+                                Margin="3,0,2,0"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                Padding="0 0 0 0"
+                                Click="PrevFrameButton_Click"
+                                >
+                                <materialDesign:PackIcon Kind="ChevronLeft" 
+                                                    Width="18" 
+                                                    Height="18" 
+                                                    Foreground="White"/>
+                            </Button>
+
+                            <!-- 页码显示 -->
+                            <TextBlock x:Name="frameCountText" 
+                                   Grid.Column="1"
+                                   Text="1/1"
+                                   Foreground="White"
+                                   FontSize="12"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+
+                            <!-- 右箭头按钮 -->
+                            <Button x:Name="nextFrameButton" 
+                                Grid.Column="2"
+                                Width="24" 
+                                Height="24"
+                                Margin="2,0,3,0"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                Padding="0 0 0 0"
+                                Click="NextFrameButton_Click"
+                                >
+                                <materialDesign:PackIcon Kind="ChevronRight" 
+                                                    Width="18" 
+                                                    Height="18" 
+                                                    Foreground="White"/>
+                            </Button>
+                        </Grid>
+                    </Border>
                 </Grid>
                 <!--CheckBox DockPanel.Dock="Bottom" x:Name="grayScale" Content="灰度导入"/-->
             </DockPanel>

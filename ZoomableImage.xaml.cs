@@ -10,6 +10,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using SkiaSharp;
 using SkiaSharp.Views.Desktop;
+using System.Collections.Generic;
 //using SkiaSharp.Views.WPF;
 //using SkiaSharp.Extended.Svg;
 
@@ -20,6 +21,7 @@ namespace ImageToMidi
     /// </summary>
 
     public delegate void ColorClickedEventHandler(object sender, Color clicked);
+    public delegate void ColorAreaSelectedEventHandler(object sender, Color averageColor);
 
     public class RoutedColorClickedEventArgs : RoutedEventArgs
     {
@@ -34,6 +36,21 @@ namespace ImageToMidi
         }
 
         public Color ClickedColor { get; }
+    }
+
+    public class RoutedColorAreaSelectedEventArgs : RoutedEventArgs
+    {
+        public RoutedColorAreaSelectedEventArgs(Color averageColor, RoutedEvent e) : base(e)
+        {
+            AverageColor = averageColor;
+        }
+
+        protected override void InvokeEventHandler(Delegate genericHandler, object genericTarget)
+        {
+            ((ColorAreaSelectedEventHandler)genericHandler)(genericTarget, AverageColor);
+        }
+
+        public Color AverageColor { get; }
     }
 
     public partial class ZoomableImage : UserControl
@@ -55,6 +72,13 @@ namespace ImageToMidi
 
         // 缓存上次的 ScalingMode，避免重复设置
         private BitmapScalingMode _lastScalingMode = BitmapScalingMode.Unspecified;
+
+        // 区域选择相关字段
+        private bool _isAreaSelecting = false;
+        private Point _areaSelectionStart;
+        private Point _areaSelectionEnd;
+        private bool _areaSelectionActive = false;
+        private SKPaint _selectionPaint;
 
         #region Dependency Properties
 
@@ -128,6 +152,14 @@ namespace ImageToMidi
         public static readonly DependencyProperty ClickableColorsProperty =
             DependencyProperty.Register("ClickableColors", typeof(bool), typeof(ZoomableImage), new PropertyMetadata(false));
 
+        public ColorAveragingMethod ColorAveraging
+        {
+            get { return (ColorAveragingMethod)GetValue(ColorAveragingProperty); }
+            set { SetValue(ColorAveragingProperty, value); }
+        }
+        public static readonly DependencyProperty ColorAveragingProperty =
+            DependencyProperty.Register("ColorAveraging", typeof(ColorAveragingMethod), typeof(ZoomableImage), new PropertyMetadata(ColorAveragingMethod.Lab));
+
         #endregion
 
         #region Events
@@ -140,6 +172,16 @@ namespace ImageToMidi
         {
             add { AddHandler(ColorClickedEvent, value); }
             remove { RemoveHandler(ColorClickedEvent, value); }
+        }
+
+        public static readonly RoutedEvent ColorAreaSelectedEvent = EventManager.RegisterRoutedEvent(
+            "ColorAreaSelected", RoutingStrategy.Bubble,
+            typeof(ColorAreaSelectedEventHandler), typeof(ZoomableImage));
+
+        public event ColorAreaSelectedEventHandler ColorAreaSelected
+        {
+            add { AddHandler(ColorAreaSelectedEvent, value); }
+            remove { RemoveHandler(ColorAreaSelectedEvent, value); }
         }
 
         #endregion
@@ -190,6 +232,15 @@ namespace ImageToMidi
                 IsAntialias = false
             };
 
+            // 初始化区域选择画笔
+            _selectionPaint = new SKPaint
+            {
+                Color = SKColors.Blue,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 1,
+                PathEffect = SKPathEffect.CreateDash(new float[] { 5, 5 }, 0)
+            };
+
             // 预创建 SKSamplingOptions，避免每次绘制时创建
             _nearestSampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
             _linearSampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear);
@@ -208,6 +259,8 @@ namespace ImageToMidi
             _skImage = null;
             _highQualityPaint?.Dispose();
             _highQualityPaint = null;
+            _selectionPaint?.Dispose();
+            _selectionPaint = null;
         }
 
         #endregion
@@ -341,6 +394,27 @@ namespace ImageToMidi
             canvas.DrawImage(_skImage, destRect, samplingOptions, _highQualityPaint);
 
             canvas.Restore();
+
+            // 绘制区域选择框
+            if (_areaSelectionActive && ClickableColors)
+            {
+                DrawSelectionRectangle(canvas);
+            }
+        }
+
+        private void DrawSelectionRectangle(SKCanvas canvas)
+        {
+            var startPoint = new SKPoint((float)_areaSelectionStart.X, (float)_areaSelectionStart.Y);
+            var endPoint = new SKPoint((float)_areaSelectionEnd.X, (float)_areaSelectionEnd.Y);
+
+            var rect = new SKRect(
+                Math.Min(startPoint.X, endPoint.X),
+                Math.Min(startPoint.Y, endPoint.Y),
+                Math.Max(startPoint.X, endPoint.X),
+                Math.Max(startPoint.Y, endPoint.Y)
+            );
+
+            canvas.DrawRect(rect, _selectionPaint);
         }
 
         private void RefreshView()
@@ -496,6 +570,16 @@ namespace ImageToMidi
             mouseNotMoved = true;
             mouseMoveStart = e.GetPosition(container);
             offsetStart = Offset;
+
+            // 处理区域选择
+            if (ClickableColors && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            {
+                _isAreaSelecting = true;
+                _areaSelectionStart = e.GetPosition(skiaElement);
+                _areaSelectionEnd = _areaSelectionStart;
+                _areaSelectionActive = true;
+                RefreshView();
+            }
         }
 
         private void Container_MouseMove(object sender, MouseEventArgs e)
@@ -504,6 +588,16 @@ namespace ImageToMidi
             if (!mouseIsDown) return;
 
             Point currentMousePos = e.GetPosition(container);
+
+            // 处理区域选择
+            if (_isAreaSelecting)
+            {
+                _areaSelectionEnd = e.GetPosition(skiaElement);
+                mouseNotMoved = false;
+                RefreshView();
+                return;
+            }
+
             Vector mouseOffset = currentMousePos - mouseMoveStart;
 
             if (mouseOffset.X != 0 || mouseOffset.Y != 0)
@@ -549,7 +643,24 @@ namespace ImageToMidi
             container.ReleaseMouseCapture();
             if (!mouseIsDown) return;
 
-            if (mouseNotMoved && ClickableColors && _bitmap != null)
+            if (_isAreaSelecting)
+            {
+                // 完成区域选择
+                _isAreaSelecting = false;
+                _areaSelectionActive = false;
+
+                if (!mouseNotMoved)
+                {
+                    var averageColor = GetAverageColorInArea();
+                    if (averageColor.HasValue)
+                    {
+                        var wpfColor = Color.FromArgb(averageColor.Value.Alpha, averageColor.Value.Red, averageColor.Value.Green, averageColor.Value.Blue);
+                        RaiseEvent(new RoutedColorAreaSelectedEventArgs(wpfColor, ColorAreaSelectedEvent));
+                    }
+                }
+                RefreshView();
+            }
+            else if (mouseNotMoved && ClickableColors && _bitmap != null)
             {
                 // 颜色拾取仍然需要使用 SKBitmap
                 var viewPoint = e.GetPosition(skiaElement);
@@ -569,7 +680,7 @@ namespace ImageToMidi
 
         #endregion
 
-        #region Color Picking
+        #region Color Picking and Area Averaging
 
         // 高性能颜色拾取方法
         private SKColor? GetColorAtPoint(Point viewPoint)
@@ -601,8 +712,297 @@ namespace ImageToMidi
             return null;
         }
 
+        // 获取选择区域内的平均颜色
+        private SKColor? GetAverageColorInArea()
+        {
+            if (_bitmap == null) return null;
+
+            try
+            {
+                // 将视图坐标转换为图像坐标
+                if (_transformMatrix.TryInvert(out var invertedMatrix))
+                {
+                    var startImagePoint = invertedMatrix.MapPoint(new SKPoint((float)_areaSelectionStart.X, (float)_areaSelectionStart.Y));
+                    var endImagePoint = invertedMatrix.MapPoint(new SKPoint((float)_areaSelectionEnd.X, (float)_areaSelectionEnd.Y));
+
+                    int minX = Math.Max(0, (int)Math.Min(startImagePoint.X, endImagePoint.X));
+                    int maxX = Math.Min(_bitmap.Width - 1, (int)Math.Max(startImagePoint.X, endImagePoint.X));
+                    int minY = Math.Max(0, (int)Math.Min(startImagePoint.Y, endImagePoint.Y));
+                    int maxY = Math.Min(_bitmap.Height - 1, (int)Math.Max(startImagePoint.Y, endImagePoint.Y));
+
+                    if (minX >= maxX || minY >= maxY) return null;
+
+                    // 收集区域内的颜色
+                    var colors = new List<SKColor>();
+                    for (int y = minY; y <= maxY; y++)
+                    {
+                        for (int x = minX; x <= maxX; x++)
+                        {
+                            colors.Add(_bitmap.GetPixel(x, y));
+                        }
+                    }
+
+                    if (colors.Count == 0) return null;
+
+                    return CalculateAverageColor(colors, ColorAveraging);
+                }
+            }
+            catch
+            {
+                // 在异常情况下返回 null
+            }
+
+            return null;
+        }
+
+        // 计算平均颜色
+        private SKColor CalculateAverageColor(List<SKColor> colors, ColorAveragingMethod method)
+        {
+            if (colors.Count == 0) return SKColors.Black;
+
+            switch (method)
+            {
+                case ColorAveragingMethod.RGB:
+                    return CalculateRGBAverageColor(colors);
+                case ColorAveragingMethod.HSV:
+                    return CalculateHSVAverageColor(colors);
+                case ColorAveragingMethod.HSL:
+                    return CalculateHSLAverageColor(colors);
+                case ColorAveragingMethod.Lab:
+                    return CalculateLabAverageColor(colors);
+                default:
+                    return CalculateLabAverageColor(colors); // 默认使用Lab
+            }
+        }
+
+        private SKColor CalculateRGBAverageColor(List<SKColor> colors)
+        {
+            double sumR = 0, sumG = 0, sumB = 0, sumA = 0;
+            foreach (var color in colors)
+            {
+                sumR += color.Red;
+                sumG += color.Green;
+                sumB += color.Blue;
+                sumA += color.Alpha;
+            }
+
+            return new SKColor(
+                (byte)(sumR / colors.Count),
+                (byte)(sumG / colors.Count),
+                (byte)(sumB / colors.Count),
+                (byte)(sumA / colors.Count)
+            );
+        }
+
+        private SKColor CalculateHSVAverageColor(List<SKColor> colors)
+        {
+            double sumH = 0, sumS = 0, sumV = 0, sumA = 0;
+            double cosSum = 0, sinSum = 0;
+
+            foreach (var color in colors)
+            {
+                GetColorID.RgbToHsv(color.Red, color.Green, color.Blue, out double h, out double s, out double v);
+
+                // 处理色相的圆形平均
+                double radians = h * Math.PI / 180.0;
+                cosSum += Math.Cos(radians) * s; // 用饱和度加权
+                sinSum += Math.Sin(radians) * s;
+
+                sumS += s;
+                sumV += v;
+                sumA += color.Alpha;
+            }
+
+            double avgH = Math.Atan2(sinSum, cosSum) * 180.0 / Math.PI;
+            if (avgH < 0) avgH += 360;
+
+            double avgS = sumS / colors.Count;
+            double avgV = sumV / colors.Count;
+            byte avgA = (byte)(sumA / colors.Count);
+
+            return HsvToRgb(avgH, avgS, avgV, avgA);
+        }
+
+        private SKColor CalculateHSLAverageColor(List<SKColor> colors)
+        {
+            double sumH = 0, sumS = 0, sumL = 0, sumA = 0;
+            double cosSum = 0, sinSum = 0;
+
+            foreach (var color in colors)
+            {
+                GetColorID.RgbToHsl(color.Red, color.Green, color.Blue, out double h, out double s, out double l);
+
+                // 处理色相的圆形平均
+                double radians = h * Math.PI / 180.0;
+                cosSum += Math.Cos(radians) * s; // 用饱和度加权
+                sinSum += Math.Sin(radians) * s;
+
+                sumS += s;
+                sumL += l;
+                sumA += color.Alpha;
+            }
+
+            double avgH = Math.Atan2(sinSum, cosSum) * 180.0 / Math.PI;
+            if (avgH < 0) avgH += 360;
+
+            double avgS = sumS / colors.Count;
+            double avgL = sumL / colors.Count;
+            byte avgA = (byte)(sumA / colors.Count);
+
+            return HslToRgb(avgH, avgS, avgL, avgA);
+        }
+
+        private SKColor CalculateLabAverageColor(List<SKColor> colors)
+        {
+            double sumL = 0, sumA = 0, sumB = 0, sumAlpha = 0;
+
+            foreach (var color in colors)
+            {
+                GetColorID.RgbToLab(color.Red, color.Green, color.Blue, out double l, out double a, out double b);
+                sumL += l;
+                sumA += a;
+                sumB += b;
+                sumAlpha += color.Alpha;
+            }
+
+            double avgL = sumL / colors.Count;
+            double avgA = sumA / colors.Count;
+            double avgB = sumB / colors.Count;
+            byte avgAlpha = (byte)(sumAlpha / colors.Count);
+
+            return LabToRgb(avgL, avgA, avgB, avgAlpha);
+        }
+
+        // HSV转RGB
+        private SKColor HsvToRgb(double h, double s, double v, byte alpha)
+        {
+            double c = v * s;
+            double x = c * (1 - Math.Abs((h / 60) % 2 - 1));
+            double m = v - c;
+
+            double r, g, b;
+            if (h >= 0 && h < 60)
+            {
+                r = c; g = x; b = 0;
+            }
+            else if (h >= 60 && h < 120)
+            {
+                r = x; g = c; b = 0;
+            }
+            else if (h >= 120 && h < 180)
+            {
+                r = 0; g = c; b = x;
+            }
+            else if (h >= 180 && h < 240)
+            {
+                r = 0; g = x; b = c;
+            }
+            else if (h >= 240 && h < 300)
+            {
+                r = x; g = 0; b = c;
+            }
+            else
+            {
+                r = c; g = 0; b = x;
+            }
+
+            return new SKColor(
+                (byte)Math.Round((r + m) * 255),
+                (byte)Math.Round((g + m) * 255),
+                (byte)Math.Round((b + m) * 255),
+                alpha
+            );
+        }
+
+        // HSL转RGB
+        private SKColor HslToRgb(double h, double s, double l, byte alpha)
+        {
+            double c = (1 - Math.Abs(2 * l - 1)) * s;
+            double x = c * (1 - Math.Abs((h / 60) % 2 - 1));
+            double m = l - c / 2;
+
+            double r, g, b;
+            if (h >= 0 && h < 60)
+            {
+                r = c; g = x; b = 0;
+            }
+            else if (h >= 60 && h < 120)
+            {
+                r = x; g = c; b = 0;
+            }
+            else if (h >= 120 && h < 180)
+            {
+                r = 0; g = c; b = x;
+            }
+            else if (h >= 180 && h < 240)
+            {
+                r = 0; g = x; b = c;
+            }
+            else if (h >= 240 && h < 300)
+            {
+                r = x; g = 0; b = c;
+            }
+            else
+            {
+                r = c; g = 0; b = x;
+            }
+
+            return new SKColor(
+                (byte)Math.Round((r + m) * 255),
+                (byte)Math.Round((g + m) * 255),
+                (byte)Math.Round((b + m) * 255),
+                alpha
+            );
+        }
+
+        // Lab转RGB
+        private SKColor LabToRgb(double l, double a, double b, byte alpha)
+        {
+            // Lab转XYZ
+            double fy = (l + 16) / 116.0;
+            double fx = a / 500.0 + fy;
+            double fz = fy - b / 200.0;
+
+            double xr = fx > 0.206897 ? fx * fx * fx : (fx - 16.0 / 116.0) / 7.787;
+            double yr = fy > 0.206897 ? fy * fy * fy : (fy - 16.0 / 116.0) / 7.787;
+            double zr = fz > 0.206897 ? fz * fz * fz : (fz - 16.0 / 116.0) / 7.787;
+
+            double X = xr * 0.95047;
+            double Y = yr * 1.00000;
+            double Z = zr * 1.08883;
+
+            // XYZ转RGB
+            double r = X * 3.2406 + Y * -1.5372 + Z * -0.4986;
+            double g = X * -0.9689 + Y * 1.8758 + Z * 0.0415;
+            double b_rgb = X * 0.0557 + Y * -0.2040 + Z * 1.0570;
+
+            // 应用gamma校正
+            r = r > 0.0031308 ? 1.055 * Math.Pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
+            g = g > 0.0031308 ? 1.055 * Math.Pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
+            b_rgb = b_rgb > 0.0031308 ? 1.055 * Math.Pow(b_rgb, 1 / 2.4) - 0.055 : 12.92 * b_rgb;
+
+            return new SKColor(
+                (byte)Math.Max(0, Math.Min(255, Math.Round(r * 255))),
+                (byte)Math.Max(0, Math.Min(255, Math.Round(g * 255))),
+                (byte)Math.Max(0, Math.Min(255, Math.Round(b_rgb * 255))),
+                alpha
+            );
+        }
+
         #endregion
     }
+
+    #region Color Averaging Method Enum
+
+    public enum ColorAveragingMethod
+    {
+        RGB,
+        HSV,
+        HSL,
+        Lab
+    }
+
+    #endregion
 
     #region VelocityDrivenAnimation
 

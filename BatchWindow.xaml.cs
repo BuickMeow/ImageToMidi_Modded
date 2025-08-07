@@ -700,9 +700,10 @@ namespace ImageToMidi
         }
 
         // 修改ExportAllMidi_Click
+        // 在ExportAllMidi_Click方法中添加内存管理
         private async void ExportAllMidi_Click(object sender, RoutedEventArgs e)
         {
-            SetExportButtonsEnabled(false); // 禁用按钮
+            SetExportButtonsEnabled(false);
             try
             {
                 var mainWin = Application.Current.MainWindow as MainWindow;
@@ -715,13 +716,15 @@ namespace ImageToMidi
                 var allFiles = GetAllImageFiles(FileList.Where(f => !f.IsBack));
                 if (allFiles.Count == 0)
                 {
-                    SetExportButtonsEnabled(false); // 没有文件时禁用按钮
+                    SetExportButtonsEnabled(false);
                     MessageBox.Show("没有可导出的文件。\nNo file to export.");
                     return;
                 }
+
                 var dlg = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog();
                 if (dlg.ShowDialog() != true)
                     return;
+
                 string exportFolder = dlg.SelectedPath;
                 Properties.Settings.Default.LastExportFolder = exportFolder;
                 Properties.Settings.Default.Save();
@@ -730,11 +733,7 @@ namespace ImageToMidi
                 int success = 0, fail = 0;
                 var failList = new List<string>();
 
-                // 进度回调
-                IProgress<string> progress = new Progress<string>(msg =>
-                {
-                    mergeMidi.Content = msg;
-                });
+                var progress = new Progress<string>(msg => mergeMidi.Content = msg);
 
                 for (int i = 0; i < total; i++)
                 {
@@ -760,26 +759,36 @@ namespace ImageToMidi
                             int sampleInterval = 1;
                             string tempDir = Path.Combine(Path.GetTempPath(), "ImageToMidiFrames", Guid.NewGuid().ToString());
 
-                            // 1. 批量采样导出帧，带进度
                             await ExtractSampledFramesAsync(filePath, tempDir, sampleInterval, progress);
 
-                            // 2. 遍历采样帧图片
                             var frameFiles = Directory.GetFiles(tempDir, "frame_*.png").OrderBy(f => f).ToArray();
-                            for (int frameIndex = 0; frameIndex < frameFiles.Length; frameIndex++)
+
+                            // 分批处理帧文件，避免内存累积
+                            const int batchSize = 10; // 每批处理10帧
+                            for (int batchStart = 0; batchStart < frameFiles.Length; batchStart += batchSize)
                             {
-                                string framePath = frameFiles[frameIndex];
-                                string midiName = $"{Path.GetFileNameWithoutExtension(filePath)}_frame_{frameIndex * sampleInterval:D4}.mid";
-                                string midiPath = Path.Combine(Path.GetDirectoryName(midiFullPath), midiName);
+                                int batchEnd = Math.Min(batchStart + batchSize, frameFiles.Length);
 
-                                exportAllMidi.Content = $"[{i + 1}/{total}] {Languages.Strings.B_ConvertingMidi} {Path.GetFileName(framePath)} ({frameIndex + 1}/{frameFiles.Length})";
+                                for (int frameIndex = batchStart; frameIndex < batchEnd; frameIndex++)
+                                {
+                                    string framePath = frameFiles[frameIndex];
+                                    string midiName = $"{Path.GetFileNameWithoutExtension(filePath)}_frame_{frameIndex * sampleInterval:D4}.mid";
+                                    string midiPath = Path.Combine(Path.GetDirectoryName(midiFullPath), midiName);
 
-                                await mainWin.BatchExportMidiAsync(
-                                    new[] { new BatchFileItem { FullPath = framePath, FileName = $"frame_{frameIndex * sampleInterval}.png", Index = frameIndex + 1 } },
-                                    Path.GetDirectoryName(midiPath),
-                                    null
-                                );
+                                    exportAllMidi.Content = $"[{i + 1}/{total}] {Languages.Strings.B_ConvertingMidi} {Path.GetFileName(framePath)} ({frameIndex + 1}/{frameFiles.Length})";
 
-                                try { File.Delete(framePath); } catch { }
+                                    await mainWin.BatchExportMidiAsync(
+                                        new[] { new BatchFileItem { FullPath = framePath, FileName = $"frame_{frameIndex * sampleInterval}.png", Index = frameIndex + 1 } },
+                                        Path.GetDirectoryName(midiPath),
+                                        null
+                                    );
+
+                                    // 立即删除处理完的帧文件
+                                    try { File.Delete(framePath); } catch { }
+                                }
+
+                                // 每批处理完后强制GC
+                                ForceGarbageCollection();
                             }
 
                             try { Directory.Delete(tempDir, true); } catch { }
@@ -793,7 +802,14 @@ namespace ImageToMidi
                                 null
                             );
                         }
+
                         success++;
+
+                        // 每处理完一个文件后清理内存
+                        if (i % 5 == 0) // 每5个文件清理一次
+                        {
+                            ForceGarbageCollection();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -804,17 +820,20 @@ namespace ImageToMidi
                 }
 
                 exportAllMidi.Content = $"批量导出MIDI完成，成功{success}，失败{fail}";
+
+                // 最终清理
+                ForceGarbageCollection();
             }
             finally
             {
-                SetExportButtonsEnabled(true); // 恢复按钮
+                SetExportButtonsEnabled(true);
             }
         }
 
-        // 修改MergeMidi_Click
+        // 在MergeMidi_Click方法中也进行类似的优化
         private async void MergeMidi_Click(object sender, RoutedEventArgs e)
         {
-            SetExportButtonsEnabled(false); // 禁用按钮
+            SetExportButtonsEnabled(false);
             try
             {
                 var mainWin = Application.Current.MainWindow as MainWindow;
@@ -823,27 +842,24 @@ namespace ImageToMidi
                     MessageBox.Show("主窗口未找到，无法导出MIDI。");
                     return;
                 }
+
                 var allFiles = GetAllImageFiles(FileList.Where(f => !f.IsBack));
                 if (allFiles.Count == 0)
                 {
-                    SetExportButtonsEnabled(false); // 没有文件时禁用按钮
+                    SetExportButtonsEnabled(false);
                     MessageBox.Show("没有可导出的文件。\nNo file to export.");
                     return;
                 }
+
                 SaveFileDialog save = new SaveFileDialog();
                 save.Filter = $"{Languages.Strings.CS_MidiFile} (*.mid)|*.mid";
-                save.FileName = "Merged.mid"; // 设置默认文件名
+                save.FileName = "Merged.mid";
                 if (!(bool)save.ShowDialog()) return;
                 string outputMidiPath = save.FileName;
 
-                // 进度回调
-                IProgress<string> progress = new Progress<string>(msg =>
-                {
-                    mergeMidi.Content = msg;
-                });
-
+                var progress = new Progress<string>(msg => mergeMidi.Content = msg);
                 var concatItems = new List<BatchFileItem>();
-                int sampleInterval = 1; // 可根据需要调整采样间隔
+                int sampleInterval = 1;
                 int total = allFiles.Count;
                 int current = 0;
 
@@ -860,8 +876,10 @@ namespace ImageToMidi
                             MessageBox.Show($"视频帧数为0，无法导出: {filePath}");
                             continue;
                         }
+
                         string tempDir = Path.Combine(Path.GetTempPath(), "ImageToMidiFrames", Guid.NewGuid().ToString());
-                        progress.Report($"[{current}/{total}] {Languages.Strings.B_ExtractingVideoFrames} {Path.GetFileName(filePath)}");
+                        (progress as IProgress<string>)?.Report($"[{current}/{total}] {Languages.Strings.B_AddImage} {Path.GetFileName(filePath)}");
+
                         await ExtractSampledFramesAsync(filePath, tempDir, sampleInterval, progress);
 
                         var frameFiles = Directory.GetFiles(tempDir, "frame_*.png").OrderBy(f => f).ToArray();
@@ -879,7 +897,7 @@ namespace ImageToMidi
                     }
                     else
                     {
-                        progress.Report($"[{current}/{total}] {Languages.Strings.B_AddImage} {Path.GetFileName(filePath)}");
+                        (progress as IProgress<string>)?.Report($"[{current}/{total}] {Languages.Strings.B_AddImage} {Path.GetFileName(filePath)}");
                         concatItems.Add(new BatchFileItem
                         {
                             FullPath = filePath,
@@ -887,19 +905,20 @@ namespace ImageToMidi
                             Index = concatItems.Count + 1
                         });
                     }
+
+                    // 每处理完一个文件后清理内存
+                    if (current % 3 == 0)
+                    {
+                        ForceGarbageCollection();
+                    }
                 }
 
-                // 合并MIDI时进度
                 var mergeProgress = new Progress<(int, int, string)>(tuple =>
                 {
                     mergeMidi.Content = $"[{tuple.Item1}/{tuple.Item2}] {tuple.Item3}";
                 });
 
-                await mainWin.BatchExportMidiConcatAsync(
-                    concatItems,
-                    outputMidiPath,
-                    mergeProgress
-                );
+                await mainWin.BatchExportMidiConcatAsync(concatItems, outputMidiPath, mergeProgress);
                 mergeMidi.Content = $"{Languages.Strings.B_MergeCompleted}";
 
                 // 清理所有临时帧目录
@@ -910,7 +929,7 @@ namespace ImageToMidi
                         try { File.Delete(item.FullPath); } catch { }
                     }
                 }
-                // 递归删除空目录
+
                 var tempRoot = Path.Combine(Path.GetTempPath(), "ImageToMidiFrames");
                 try
                 {
@@ -918,11 +937,24 @@ namespace ImageToMidi
                         Directory.Delete(tempRoot, true);
                 }
                 catch { }
+
+                // 最终清理
+                ForceGarbageCollection();
             }
             finally
             {
-                SetExportButtonsEnabled(true); // 恢复按钮
+                SetExportButtonsEnabled(true);
             }
+        }
+
+        // 添加强制垃圾回收方法
+        private static void ForceGarbageCollection()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
         }
         private static bool IsFFmpegAvailable()
         {
@@ -932,7 +964,7 @@ namespace ImageToMidi
         }
 
         private async Task ExtractSampledFramesAsync(
-    string videoPath, string outputDir, int sampleInterval, IProgress<string> progress = null)
+            string videoPath, string outputDir, int sampleInterval, IProgress<string> progress = null)
         {
             string exeDir = AppDomain.CurrentDomain.BaseDirectory;
             string ffmpegPath = Path.Combine(exeDir, "ffmpeg.exe");
@@ -945,11 +977,11 @@ namespace ImageToMidi
             // 添加内存优化参数
             string args = $"-i \"{videoPath}\" " +
                           $"-vf \"select=not(mod(n\\,{sampleInterval}))\" " +
-                          $"-vsync 0 " +
-                          $"-f image2 " +
-                          $"-pix_fmt rgba " +
-                          $"-threads 1 " +                           // 限制线程数
-                          $"-loglevel error " +                      // 减少日志输出
+                          $"-vsync 0 " +                             // 关闭同步
+                          $"-f image2 " +                            // 设置输出格式为图片
+                          $"-pix_fmt rgba " +                        // 设置像素格式为rgba
+                          //$"-threads 1 " +                         // 限制线程数
+                          $"-loglevel info " +                       // 正常日志输出
                           $"-avoid_negative_ts make_zero " +         // 避免负时间戳
                           $"-fflags +genpts " +                      // 生成时间戳
                           $"-movflags +faststart " +                 // 快速启动
@@ -963,12 +995,13 @@ namespace ImageToMidi
                 UseShellExecute = false,
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
-                // 限制进程内存使用
                 WorkingDirectory = Path.GetTempPath()
             };
 
-            // 添加环境变量来限制 FFmpeg 内存使用
-            psi.EnvironmentVariables["FFREPORT"] = "file=nul";  // 禁用报告文件
+            // 限制FFmpeg内存使用的环境变量
+            psi.EnvironmentVariables["FFREPORT"] = "file=nul";  // 禁用FFmpeg日志
+            psi.EnvironmentVariables["FFMPEG_MEMORY_LIMIT"] = "512M"; // 限制512MB内存
+
 
             using (var proc = Process.Start(psi))
             {

@@ -1,7 +1,9 @@
-using MaterialDesignThemes.Wpf;
+//using MaterialDesignThemes.Wpf;
 using Microsoft.Win32;
+using MIDIModificationFramework;
+using MIDIModificationFramework.MIDI_Events;
 using System;
-using System.Collections.Concurrent;
+//using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -9,7 +11,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web.UI.WebControls;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -17,6 +18,11 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+//using SixLabors.ImageSharp;
+//using SixLabors.ImageSharp.Formats.Gif;
+//using SixLabors.ImageSharp.Formats.Webp;
+//using SixLabors.ImageSharp.PixelFormats;
+//using SixLabors.ImageSharp.Processing;
 
 namespace ImageToMidi
 {
@@ -151,40 +157,6 @@ namespace ImageToMidi
             e.SetValue(FadeOutStoryboard, fadeOutBoard);
         }
 
-        // 修改TriggerMenuTransition，支持三栏
-        /*void TriggerMenuTransition(bool left, bool settings = false)
-        {
-            if (settings)
-            {
-                selectedHighlightLeft.Opacity = 0;
-                selectedHighlightMiddle.Opacity = 0;
-                selectedHighlightRight.Opacity = 1;
-                SettingsPanel.Visibility = Visibility.Visible;
-                ManualColorPanel.Visibility = Visibility.Collapsed;
-                AutoColorPanel.Visibility = Visibility.Collapsed;
-            }
-            else if (left)
-            {
-                selectedHighlightLeft.Opacity = 1;
-                selectedHighlightMiddle.Opacity = 0;
-                selectedHighlightRight.Opacity = 0;
-                SettingsPanel.Visibility = Visibility.Collapsed;
-                ManualColorPanel.Visibility = Visibility.Visible;
-                AutoColorPanel.Visibility = Visibility.Collapsed;
-                settingsSelected = false;
-            }
-            else
-            {
-                selectedHighlightLeft.Opacity = 0;
-                selectedHighlightMiddle.Opacity = 1;
-                selectedHighlightRight.Opacity = 0;
-                SettingsPanel.Visibility = Visibility.Collapsed;
-                ManualColorPanel.Visibility = Visibility.Collapsed;
-                AutoColorPanel.Visibility = Visibility.Visible;
-                settingsSelected = false;
-            }
-        }*/
-
         public MainWindow()
         {
             InitializeComponent();
@@ -220,19 +192,14 @@ namespace ImageToMidi
             this.Closing += MainWindow_Closing;
             HeightModeComboBox.SelectionChanged += HeightModeComboBox_SelectionChanged;
             NoteLengthModeComboBox.SelectionChanged += NoteLengthModeComboBox_SelectionChanged;
-            //UpdateNoteLengthModeUI();
-            // JIT预热，异步后台执行
-            /*Dispatcher.BeginInvoke(new Action(async () =>
-            {
-                var bmp = BitmapSource.Create(8, 8, 96, 96, PixelFormats.Bgra32, null, new byte[8 * 8 * 4], 8 * 4);
-                await Rotate90(bmp);
-                await Rotate180(bmp);
-                await Rotate270(bmp);
-                await FlipHorizontal(bmp);
-            }));*/
         }
+
+        #region UI
+
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            CleanupGifTempDirectory();
+
             if (batchWindow != null)
             {
                 batchWindow.ForceClose();
@@ -240,6 +207,8 @@ namespace ImageToMidi
         }
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
+            CleanupGifTempDirectory();
+
             // 关闭批处理窗口
             if (batchWindow != null)
             {
@@ -338,76 +307,68 @@ namespace ImageToMidi
                 Dispatcher.BeginInvoke(new Action(UpdateAlgorithmParamPanel), System.Windows.Threading.DispatcherPriority.Background);
             }
         }
-
-        //private const int MaxPreviewWidth = 256; // 最大宽度限制
-
-        // 在 MainWindow 类中添加缓冲区池
-        private static readonly ConcurrentQueue<byte[]> _bufferPool = new ConcurrentQueue<byte[]>();
-        private static readonly object _poolLock = new object();
-
-        private static byte[] RentBuffer(int size)
+        private async void HighResWidthNumberSelect_ValueChanged(object sender, RoutedPropertyChangedEventArgs<decimal> e)
         {
-            // 只池化小于1MB的缓冲区
-            if (size < 1024 * 1024)
+            highResPreviewWidth = (int)HighResWidthNumberSelect.Value;
+            await RefreshHighResPreview();
+        }
+        private void OpenedImage_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                while (_bufferPool.TryDequeue(out var buffer))
+                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files.Length > 0 && IsSupportedImageFile(files[0]))
                 {
-                    if (buffer.Length >= size)
-                        return buffer;
+                    e.Effects = DragDropEffects.Copy;
                 }
-                return new byte[size];
+                else
+                {
+                    e.Effects = DragDropEffects.None;
+                }
             }
             else
             {
-                return new byte[size];
+                e.Effects = DragDropEffects.None;
             }
+            e.Handled = true;
         }
 
-        private static void ReturnBuffer(byte[] buffer)
+        private void OpenedImage_Drop(object sender, DragEventArgs e)
         {
-            if (buffer != null && buffer.Length > 0 && buffer.Length < 1024 * 1024)
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                _bufferPool.Enqueue(buffer);
+                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files.Length > 0 && IsSupportedImageFile(files[0]))
+                {
+                    LoadImageForPreview(files[0]);
+                }
             }
-            // 大缓冲区直接丢弃
+            e.Handled = true;
         }
+        #endregion
 
-        // 添加一个大型缓冲区池用于 LOH 对象
-        private static readonly ConcurrentQueue<byte[]> _largeBufferPool = new ConcurrentQueue<byte[]>();
-        private const int LOH_THRESHOLD = 85000;
+        #region ImageProcessing
 
-        // 获取 LOH 对齐的缓冲区
-        private static byte[] RentLargeBuffer(int minSize)
-        {
-            int alignedSize = Math.Max(minSize, LOH_THRESHOLD);
-
-            // 尝试从池中获取
-            while (_largeBufferPool.TryDequeue(out var buffer))
-            {
-                if (buffer.Length >= alignedSize)
-                    return buffer;
-            }
-
-            // 创建新的 LOH 对齐缓冲区
-            alignedSize = ((alignedSize + 8191) / 8192) * 8192; // 8KB 对齐
-            return new byte[alignedSize];
-        }
-
-        private static void ReturnLargeBuffer(byte[] buffer)
-        {
-            if (buffer != null && buffer.Length >= LOH_THRESHOLD)
-            {
-                _largeBufferPool.Enqueue(buffer);
-            }
-        }
-        /// <summary>
-        /// 优化后的缩放方法，减少内存分配
-        /// </summary>
         /// <summary>
         /// 优化后的缩放方法，去掉缓冲区池，直接分配内存
         /// </summary>
         private BitmapSource Downsample(BitmapSource src, int? maxWidth = null, int? maxHeight = null, Action<double> progress = null)
         {
+            // 确保源图像已经冻结，避免跨线程问题
+            if (!src.IsFrozen)
+            {
+                // 如果在非UI线程中，需要返回到UI线程进行冻结
+                if (!Dispatcher.CheckAccess())
+                {
+                    return Dispatcher.Invoke(() => Downsample(src, maxWidth, maxHeight, progress));
+                }
+
+                // 在UI线程中创建副本并冻结
+                var frozenSrc = src.Clone();
+                frozenSrc.Freeze();
+                src = frozenSrc;
+            }
+
             int width = src.PixelWidth;
             int height = src.PixelHeight;
 
@@ -424,9 +385,25 @@ namespace ImageToMidi
             int dstW = (int)Math.Round(width * scaleX);
             int dstH = (int)Math.Round(height * scaleY);
 
-            // 转换为统一格式
-            var src32 = new FormatConvertedBitmap(src, PixelFormats.Bgra32, null, 0);
-            src32.Freeze();
+            // 确保格式转换在UI线程进行，或者使用已冻结的源
+            FormatConvertedBitmap src32;
+            try
+            {
+                src32 = new FormatConvertedBitmap(src, PixelFormats.Bgra32, null, 0);
+                if (!src32.IsFrozen)
+                {
+                    src32.Freeze();
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // 如果跨线程访问失败，回到UI线程处理
+                if (!Dispatcher.CheckAccess())
+                {
+                    return Dispatcher.Invoke(() => Downsample(src, maxWidth, maxHeight, progress));
+                }
+                throw;
+            }
 
             int srcStride = width * 4;
             int srcSize = height * srcStride;
@@ -439,6 +416,7 @@ namespace ImageToMidi
             // 清零目标缓冲区（重要：确保数据干净）
             Array.Clear(dstPixels, 0, dstSize);
 
+            // 像素数据复制是线程安全的
             src32.CopyPixels(srcPixels, srcStride, 0);
 
             // 使用更保守的并行策略
@@ -452,18 +430,43 @@ namespace ImageToMidi
                 ProcessRow(y, dstW, dstH, width, height, srcPixels, dstPixels, srcStride, progress);
             });
 
-            // 创建结果位图
-            var bmp = BitmapSource.Create(dstW, dstH, src.DpiX, src.DpiY, PixelFormats.Bgra32, null, dstPixels, dstW * 4);
-            bmp.Freeze();
+            // 创建结果位图 - 这个操作是线程安全的，因为我们使用的是原始像素数据
+            BitmapSource bmp;
+            try
+            {
+                bmp = BitmapSource.Create(dstW, dstH, src.DpiX, src.DpiY, PixelFormats.Bgra32, null, dstPixels, dstW * 4);
+                bmp.Freeze();
+            }
+            catch (InvalidOperationException)
+            {
+                // 如果在非UI线程创建失败，回到UI线程
+                if (!Dispatcher.CheckAccess())
+                {
+                    return Dispatcher.Invoke(() =>
+                    {
+                        var result = BitmapSource.Create(dstW, dstH, src.DpiX, src.DpiY, PixelFormats.Bgra32, null, dstPixels, dstW * 4);
+                        result.Freeze();
+                        return result;
+                    });
+                }
+                throw;
+            }
+
             return bmp;
         }
 
-        private async void HighResWidthNumberSelect_ValueChanged(object sender, RoutedPropertyChangedEventArgs<decimal> e)
-        {
-            highResPreviewWidth = (int)HighResWidthNumberSelect.Value;
-            await RefreshHighResPreview();
-        }
-
+        /// <summary>
+        /// 用于处理图像的每一行
+        /// </summary>
+        /// <param name="y">这是当前处理的行号</param>
+        /// <param name="dstW">这是目标图像的宽度</param>
+        /// <param name="dstH">这是目标图像的高度</param>
+        /// <param name="width">这是源图像的宽度</param>
+        /// <param name="height">这是源图像的高度</param>
+        /// <param name="srcPixels">这是源图像的像素数据</param>
+        /// <param name="dstPixels">这是目标图像的像素数据</param>
+        /// <param name="srcStride">这是源图像的比例</param>
+        /// <param name="progress">这是一个可选的进度报告函数</param>
         private static void ProcessRow(int y, int dstW, int dstH, int width, int height,
             byte[] srcPixels, byte[] dstPixels, int srcStride, Action<double> progress)
         {
@@ -509,39 +512,8 @@ namespace ImageToMidi
                 progress((y + 1) / (double)dstH);
             }
         }
-        private void OpenedImage_DragEnter(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                if (files.Length > 0 && IsSupportedImageFile(files[0]))
-                {
-                    e.Effects = DragDropEffects.Copy;
-                }
-                else
-                {
-                    e.Effects = DragDropEffects.None;
-                }
-            }
-            else
-            {
-                e.Effects = DragDropEffects.None;
-            }
-            e.Handled = true;
-        }
-
-        private void OpenedImage_Drop(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                if (files.Length > 0 && IsSupportedImageFile(files[0]))
-                {
-                    LoadImageForPreview(files[0]);
-                }
-            }
-            e.Handled = true;
-        }
+        #endregion
+        
 
         // 判断文件是否为受支持的图片格式
         private bool IsSupportedImageFile(string filePath)
@@ -550,26 +522,78 @@ namespace ImageToMidi
             string ext = System.IO.Path.GetExtension(filePath).ToLowerInvariant();
             return supportedExtensions.Contains(ext);
         }
-        private async void BrowseImage_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// 通用的图像加载和处理方法，供 LoadImageForPreview 和 BrowseImage_Click 使用
+        /// </summary>
+        /// <param name="imagePath">图像文件路径</param>
+        /// <param name="isFromBrowse">是否来自浏览按钮（用于区分不同的特殊处理）</param>
+        private async Task LoadImageInternalAsync(string imagePath, bool isFromBrowse = false)
         {
-            colPicker.CancelPick();
-            ((Storyboard)openedImage.GetValue(FadeInStoryboard)).Begin();
-            //await Task.Delay(100);
+            if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+                return;
 
-            OpenFileDialog open = new OpenFileDialog();
-            open.Filter = $"{Languages.Strings.CS_OpenFilter} (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.svg;*.eps;*.ai;*.pdf)|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.svg;*.eps;*.ai;*.pdf";
-            if (!(bool)open.ShowDialog()) return;
-            openedImagePath = open.FileName;
+            openedImagePath = imagePath;
 
+            // 通用清理逻辑
+            ClearImageCaches();
+
+            // 设置进度和UI状态
+            saveMidi.IsEnabled = false;
+            var progress = new Progress<string>(msg => saveMidi.Content = msg);
+
+            // 文件类型识别
             string ext = System.IO.Path.GetExtension(openedImagePath).ToLowerInvariant();
             string[] bitmapAllowed = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp" };
             string[] vectorAllowed = { ".svg" };
             string[] gsVectorAllowed = { ".eps", ".ai", ".pdf" };
 
-            // 清理所有缓存 - 重要：先清理 ZoomableImage 的资源
-            openedImage.Source = null;
-            openedImage.SetSKBitmap(null);
+            BitmapSource src = null;
 
+            try
+            {
+                // 位图处理
+                if (bitmapAllowed.Contains(ext))
+                {
+                    await ProcessBitmapImageAsync(progress, isFromBrowse);
+                }
+                // SVG处理
+                else if (vectorAllowed.Contains(ext))
+                {
+                    src = await ProcessSvgImageAsync(progress, isFromBrowse);
+                }
+                // Ghostscript矢量图处理
+                else if (gsVectorAllowed.Contains(ext))
+                {
+                    src = await ProcessGsVectorImageAsync(ext, progress, isFromBrowse);
+                }
+                else
+                {
+                    string supportedFormats = isFromBrowse ? "（png, jpg, jpeg, bmp, svg, eps）" : "（png, jpg, jpeg, bmp, svg, eps, ai, pdf）";
+                    MessageBox.Show($"请选择有效的图片或矢量图文件{supportedFormats}。", "文件类型不支持", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // 通用后处理
+                await PostProcessImageAsync(isFromBrowse);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"图像加载失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+        }
+
+        /// <summary>
+        /// 清理所有图像缓存
+        /// </summary>
+        private void ClearImageCaches()
+        {
+            // 清理 ZoomableImage 资源（仅在浏览时）
+            openedImage.Source = null;
+            if (openedImage != null)
+                openedImage.SetSKBitmap(null);
+
+            // 清理所有缓存变量
             openedImageSrc = null;
             openedImagePixels = null;
             originalImageSrc = null;
@@ -585,6 +609,8 @@ namespace ImageToMidi
             portraitColorPreviewPixels = null;
             portraitGrayPreviewSrc = null;
             portraitGrayPreviewPixels = null;
+
+            // 重置旋转和镜像状态
             previewRotation = 0;
             previewFlip = false;
             openedImage.ImageRotation = 0;
@@ -596,47 +622,97 @@ namespace ImageToMidi
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
+        }
 
-            saveMidi.IsEnabled = false;
-            var progress = new Progress<string>(msg => saveMidi.Content = msg);
+        /// <summary>
+        /// 处理位图文件
+        /// </summary>
+        private async Task ProcessBitmapImageAsync(IProgress<string> progress, bool isFromBrowse)
+        {
+            var result = await LoadAndProcessImageAsync(openedImagePath, false, progress);
+            var src = result.original;
+            originalImageSrc = src;
 
-            BitmapSource src = null;
+            // 先加载动图帧，在处理图像之前
+            LoadAnimatedFrames(openedImagePath);
 
-            // 位图流程
-            if (bitmapAllowed.Contains(ext))
+            // 如果是多帧动图，等待一小段时间确保帧加载完成
+            if (isAnimatedImage && animatedFrames != null && animatedFrames.Count > 0)
             {
-                var result = await LoadAndProcessImageAsync(openedImagePath, false, progress);
-                src = result.original;
-                originalImageSrc = src;
-                await UpdateOpenedImageByAngleAndFlip();
+                // 使用第一帧作为初始显示源，确保数据一致性
+                var firstFrame = animatedFrames[0];
 
-                if (originalImageSrc != null)
+                // 重新生成第一帧的缩略图，替换可能不完整的初始缩略图
+                await Task.Run(() =>
                 {
-                    openedImage.Opacity = 0;
-                    originalImageWidth = originalImageSrc.PixelWidth;
-                    originalImageHeight = originalImageSrc.PixelHeight;
-                    var skBitmap = originalImageSrc.ToSKBitmap();
-                    src = null;
-                    originalImageSrc = null;
-                    openedImage.SetSKBitmap(skBitmap);
+                    progress?.Report($"{Languages.Strings.CS_GeneratingLandscape}");
+                    var landscapeColor = Downsample(firstFrame, null, 256);
+                    ExtractPixels(landscapeColor, out var landscapeColorPixels);
 
-                    var fadeIn = (Storyboard)openedImage.GetValue(FadeInStoryboard);
-                    fadeIn?.Begin();
+                    progress?.Report($"{Languages.Strings.CS_GeneratingPortrait}");
+                    var portraitColor = Downsample(firstFrame, 256, null);
+                    ExtractPixels(portraitColor, out var portraitColorPixels);
 
-                    await Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        GC.Collect();
-                        GC.WaitForPendingFinalizers();
-                        GC.Collect();
-                    }), System.Windows.Threading.DispatcherPriority.ContextIdle);
-                }
+                    // 更新缓存
+                    landscapeColorPreviewSrc = landscapeColor;
+                    landscapeColorPreviewPixels = landscapeColorPixels;
+                    portraitColorPreviewSrc = portraitColor;
+                    portraitColorPreviewPixels = portraitColorPixels;
+
+                    // 清空可能存在的灰度缓存，避免不一致
+                    landscapeGrayPreviewSrc = null;
+                    landscapeGrayPreviewPixels = null;
+                    portraitGrayPreviewSrc = null;
+                    portraitGrayPreviewPixels = null;
+                });
+
+                // 更新原始图像源为第一帧
+                originalImageSrc = firstFrame;
+                originalImageWidth = firstFrame.PixelWidth;
+                originalImageHeight = firstFrame.PixelHeight;
             }
 
-            // SVG流程
-            else if (vectorAllowed.Contains(ext))
+            await UpdateOpenedImageByAngleAndFlip();
+
+            if (isFromBrowse && originalImageSrc != null)
             {
-                int keyWidth = (int)lastKeyNumber.Value - (int)firstKeyNumber.Value + 1;
-                int targetHeight = GetTargetHeight();
+                // BrowseImage_Click 特有的处理
+                openedImage.Opacity = 0;
+                originalImageWidth = originalImageSrc.PixelWidth;
+                originalImageHeight = originalImageSrc.PixelHeight;
+
+                // 保留 originalImageSrc 的引用，不要设为 null
+                var skBitmap = originalImageSrc.ToSKBitmap();
+                openedImage.SetSKBitmap(skBitmap);
+
+                var fadeIn = (Storyboard)openedImage.GetValue(FadeInStoryboard);
+                fadeIn?.Begin();
+
+                await Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+                }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+            }
+            else if (!isFromBrowse)
+            {
+                // LoadImageForPreview 特有的处理
+                openedImage.Source = originalImageSrc;
+            }
+        }
+
+        /// <summary>
+        /// 处理SVG文件
+        /// </summary>
+        private async Task<BitmapSource> ProcessSvgImageAsync(IProgress<string> progress, bool isFromBrowse)
+        {
+            int keyWidth = (int)lastKeyNumber.Value - (int)firstKeyNumber.Value + 1;
+            int targetHeight = GetTargetHeight();
+
+            if (isFromBrowse)
+            {
+                // BrowseImage_Click 特有的 SVG 处理
                 var settings = new SharpVectors.Renderers.Wpf.WpfDrawingSettings();
                 var reader = new SharpVectors.Converters.FileSvgReader(settings);
                 DrawingGroup drawing = null;
@@ -645,11 +721,10 @@ namespace ImageToMidi
 
                 await Dispatcher.InvokeAsync(() =>
                 {
-                    src = landscapeColorPreviewSrc;
+                    var src = landscapeColorPreviewSrc;
                     openedImageSrc = src;
                     openedImageWidth = src.PixelWidth;
                     openedImageHeight = src.PixelHeight;
-                    // 新增：赋值原图宽高
                     originalImageWidth = src.PixelWidth;
                     originalImageHeight = src.PixelHeight;
                     ExtractPixels(src, out openedImagePixels);
@@ -668,68 +743,122 @@ namespace ImageToMidi
                 }
                 else
                 {
-                    MessageBox.Show("SVG加载失败。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-            }
-
-            // Ghostscript流程（EPS/AI/PDF）
-            else if (gsVectorAllowed.Contains(ext))
-            {
-                if (!IsGhostscriptAvailable())
-                {
-                    ShowGhostscriptDownloadDialog();
-                    return;
-                }
-
-                int keyWidth = (int)lastKeyNumber.Value - (int)firstKeyNumber.Value + 1;
-                int targetHeight = GetTargetHeight();
-
-                try
-                {
-                    src = await Task.Run(() => RenderGsVectorToBitmapSource(openedImagePath, keyWidth, targetHeight));
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"{ext.ToUpper()}加载失败：" + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                openedImageSrc = src;
-                openedImageWidth = src.PixelWidth;
-                openedImageHeight = src.PixelHeight;
-                // 新增：赋值原图宽高
-                originalImageWidth = src.PixelWidth;
-                originalImageHeight = src.PixelHeight;
-                ExtractPixels(src, out openedImagePixels);
-
-                try
-                {
-                    var highResBitmap = await RenderGsVectorHighResPreview(openedImagePath, src, highResPreviewWidth, progress);
-                    var skBitmap = highResBitmap.ToSKBitmap();
-                    openedImage.SetSKBitmap(skBitmap);
-                }
-                catch
-                {
-                    if (src != null)
-                    {
-                        var skBitmap = src.ToSKBitmap();
-                        openedImage.SetSKBitmap(skBitmap);
-                    }
+                    throw new Exception("SVG加载失败。");
                 }
             }
             else
             {
-                MessageBox.Show("请选择有效的图片或矢量图文件（png, jpg, jpeg, bmp, svg, eps）。", "文件类型不支持", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
+                // LoadImageForPreview 的 SVG 处理
+                await Task.Run(() => GenerateSVGThumbnails(openedImagePath, keyWidth, targetHeight, previewRotation, previewFlip, progress));
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    var src = landscapeColorPreviewSrc;
+                    openedImageSrc = src;
+                    openedImageWidth = src.PixelWidth;
+                    openedImageHeight = src.PixelHeight;
+                    ExtractPixels(src, out openedImagePixels);
+                    openedImage.Source = src;
+                });
             }
 
-            CustomHeightNumberSelect.Value = GetTargetHeight();
+            return landscapeColorPreviewSrc;
+        }
 
+        /// <summary>
+        /// 处理 Ghostscript 矢量文件（EPS/AI/PDF）
+        /// </summary>
+        private async Task<BitmapSource> ProcessGsVectorImageAsync(string ext, IProgress<string> progress, bool isFromBrowse)
+        {
+            if (!IsGhostscriptAvailable())
+            {
+                ShowGhostscriptDownloadDialog();
+                throw new Exception("Ghostscript不可用");
+            }
+
+            int keyWidth = (int)lastKeyNumber.Value - (int)firstKeyNumber.Value + 1;
+            int targetHeight = GetTargetHeight();
+
+            BitmapSource src;
+            try
+            {
+                src = await Task.Run(() => RenderGsVectorToBitmapSource(openedImagePath, keyWidth, targetHeight));
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"{ext.ToUpper()}加载失败：" + ex.Message);
+            }
+
+            openedImageSrc = src;
+            openedImageWidth = src.PixelWidth;
+            openedImageHeight = src.PixelHeight;
+            originalImageWidth = src.PixelWidth;
+            originalImageHeight = src.PixelHeight;
+            ExtractPixels(src, out openedImagePixels);
+
+            // 高分辨率预览渲染
+            var highResProgress = new Progress<string>(msg => saveMidi.Content = msg);
+            try
+            {
+                var highResBitmap = await RenderGsVectorHighResPreview(openedImagePath, src, highResPreviewWidth, highResProgress);
+
+                if (isFromBrowse)
+                {
+                    var skBitmap = highResBitmap.ToSKBitmap();
+                    openedImage.SetSKBitmap(skBitmap);
+                }
+                else
+                {
+                    openedImage.Source = highResBitmap;
+                }
+            }
+            catch
+            {
+                if (src != null)
+                {
+                    if (isFromBrowse)
+                    {
+                        var skBitmap = src.ToSKBitmap();
+                        openedImage.SetSKBitmap(skBitmap);
+                    }
+                    else
+                    {
+                        openedImage.Source = src;
+                    }
+                }
+            }
+
+            return src;
+        }
+
+        /// <summary>
+        /// 图像加载后的通用后处理
+        /// </summary>
+        private async Task PostProcessImageAsync(bool isFromBrowse)
+        {
+            CustomHeightNumberSelect.Value = GetTargetHeight();
             saveMidi.Content = $"{Languages.Strings.CS_GeneratingPalette} 0%";
             await ReloadAutoPalette();
 
-            // 新增：导入图片后，若已勾选灰度，主动生成灰度缩略图
+            // 灰度缩略图生成
+            await GenerateGrayScaleThumbnailsIfNeeded();
+
+            // BrowseImage_Click 特有的批量列表更新
+            if (isFromBrowse)
+            {
+                UpdateBatchFileList();
+            }
+
+            // 最终 GC
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
+
+        /// <summary>
+        /// 如果需要，生成灰度缩略图
+        /// </summary>
+        private async Task GenerateGrayScaleThumbnailsIfNeeded()
+        {
             if (grayScaleCheckBox.IsChecked == true)
             {
                 if (landscapeColorPreviewSrc != null)
@@ -742,15 +871,15 @@ namespace ImageToMidi
                     portraitGrayPreviewSrc = ToGrayScale(portraitColorPreviewSrc);
                     ExtractPixels(portraitGrayPreviewSrc, out portraitGrayPreviewPixels);
                 }
-                // 关键：让 openedImageSrc/Source 用灰度数据
                 await UpdateOpenedImageByAngleAndFlip();
-                //openedImage.Source = openedImageSrc;
             }
-            
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
+        }
 
+        /// <summary>
+        /// 更新批量处理文件列表
+        /// </summary>
+        private void UpdateBatchFileList()
+        {
             if (originalImageSrc != null || openedImageSrc != null)
             {
                 var eitherSrc = originalImageSrc ?? openedImageSrc;
@@ -759,7 +888,7 @@ namespace ImageToMidi
                     Index = BatchFileList.Count + 1,
                     Format = System.IO.Path.GetExtension(openedImagePath).TrimStart('.').ToUpperInvariant(),
                     FileName = System.IO.Path.GetFileName(openedImagePath),
-                    FrameCount = 1,
+                    FrameCount = isAnimatedImage ? totalFrameCount : 1,
                     Resolution = $"{eitherSrc.PixelWidth}x{eitherSrc.PixelHeight}",
                     FullPath = openedImagePath
                 });
@@ -768,7 +897,25 @@ namespace ImageToMidi
             {
                 MessageBox.Show("图片加载失败，无法添加到批量列表。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            
+        }
+
+        // 重构后的 LoadImageForPreview 方法
+        public async void LoadImageForPreview(string imagePath)
+        {
+            await LoadImageInternalAsync(imagePath, false);
+        }
+
+        // 重构后的 BrowseImage_Click 方法
+        private async void BrowseImage_Click(object sender, RoutedEventArgs e)
+        {
+            colPicker.CancelPick();
+            ((Storyboard)openedImage.GetValue(FadeInStoryboard)).Begin();
+
+            OpenFileDialog open = new OpenFileDialog();
+            open.Filter = $"{Languages.Strings.CS_OpenFilter} (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.svg;*.eps;*.ai;*.pdf)|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp;*.svg;*.eps;*.ai;*.pdf";
+            if (!(bool)open.ShowDialog()) return;
+
+            await LoadImageInternalAsync(open.FileName, true);
         }
         /// <summary>
         /// 生成 EPS/AI/PDF 文件的 4096 宽度高分辨率预览图
@@ -876,139 +1023,7 @@ namespace ImageToMidi
                 catch { }
             }
         }
-        public async void LoadImageForPreview(string imagePath)
-        {
-            if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
-                return;
-
-            openedImagePath = imagePath;
-
-            // 清理所有缓存
-            openedImageSrc = null;
-            openedImagePixels = null;
-            originalImageSrc = null;
-            ditheredImagePixels = null;
-            chosenPalette = null;
-            convert = null;
-            openedImage.Source = null;
-            genImage.Source = null;
-            landscapeColorPreviewSrc = null;
-            landscapeColorPreviewPixels = null;
-            landscapeGrayPreviewSrc = null;
-            landscapeGrayPreviewPixels = null;
-            portraitColorPreviewSrc = null;
-            portraitColorPreviewPixels = null;
-            portraitGrayPreviewSrc = null;
-            portraitGrayPreviewPixels = null;
-            previewRotation = 0;
-            previewFlip = false;
-            openedImage.ImageRotation = 0;
-            openedImage.ImageFlip = false;
-
-            colPicker.ClearPalette();
-
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-
-            saveMidi.IsEnabled = false;
-            var progress = new Progress<string>(msg => saveMidi.Content = msg);
-
-            string ext = System.IO.Path.GetExtension(openedImagePath).ToLowerInvariant();
-            string[] bitmapAllowed = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp" };
-            string[] vectorAllowed = { ".svg" };
-            string[] gsVectorAllowed = { ".eps", ".ai", ".pdf" };
-
-            BitmapSource src = null;
-
-            if (bitmapAllowed.Contains(ext))
-            {
-                // 位图流程
-                var result = await LoadAndProcessImageAsync(openedImagePath, false, progress);
-                src = result.original;
-                originalImageSrc = src;
-                await UpdateOpenedImageByAngleAndFlip();
-                openedImage.Source = originalImageSrc;
-            }
-            else if (vectorAllowed.Contains(ext))
-            {
-                // SVG流程
-                int keyWidth = (int)lastKeyNumber.Value - (int)firstKeyNumber.Value + 1;
-                int targetHeight = GetTargetHeight();
-                await Task.Run(() => GenerateSVGThumbnails(openedImagePath, keyWidth, targetHeight, previewRotation, previewFlip, progress));
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    src = landscapeColorPreviewSrc;
-                    openedImageSrc = src;
-                    openedImageWidth = src.PixelWidth;
-                    openedImageHeight = src.PixelHeight;
-                    ExtractPixels(src, out openedImagePixels);
-                    openedImage.Source = src;
-                });
-            }
-            else if (gsVectorAllowed.Contains(ext))
-            {
-                // EPS/AI/PDF流程
-                if (!IsGhostscriptAvailable())
-                {
-                    ShowGhostscriptDownloadDialog();
-                    return;
-                }
-                int keyWidth = (int)lastKeyNumber.Value - (int)firstKeyNumber.Value + 1;
-                int targetHeight = GetTargetHeight();
-                try
-                {
-                    src = await Task.Run(() => RenderGsVectorToBitmapSource(openedImagePath, keyWidth, targetHeight));
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"{ext.ToUpper()}加载失败：" + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-                openedImageSrc = src;
-                openedImageWidth = src.PixelWidth;
-                openedImageHeight = src.PixelHeight;
-                ExtractPixels(src, out openedImagePixels);
-                // 渲染高分辨率预览
-                var highResProgress = new Progress<string>(msg => saveMidi.Content = msg);
-                try
-                {
-                    var highResBitmap = await RenderGsVectorHighResPreview(openedImagePath, src, highResPreviewWidth, highResProgress);
-                    openedImage.Source = highResBitmap;
-                }
-                catch
-                {
-                    openedImage.Source = src;
-                }
-            }
-            else
-            {
-                MessageBox.Show("请选择有效的图片或矢量图文件（png, jpg, jpeg, bmp, svg, eps, ai, pdf）。", "文件类型不支持", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            CustomHeightNumberSelect.Value = GetTargetHeight();
-            saveMidi.Content = $"{Languages.Strings.CS_GeneratingPalette} 0%";
-            await ReloadAutoPalette();
-            // 新增：导入图片后，若已勾选灰度，主动生成灰度缩略图
-            if (grayScaleCheckBox.IsChecked == true)
-            {
-                if (landscapeColorPreviewSrc != null)
-                {
-                    landscapeGrayPreviewSrc = ToGrayScale(landscapeColorPreviewSrc);
-                    ExtractPixels(landscapeGrayPreviewSrc, out landscapeGrayPreviewPixels);
-                }
-                if (portraitColorPreviewSrc != null)
-                {
-                    portraitGrayPreviewSrc = ToGrayScale(portraitColorPreviewSrc);
-                    ExtractPixels(portraitGrayPreviewSrc, out portraitGrayPreviewPixels);
-                }
-                await UpdateOpenedImageByAngleAndFlip();
-            }
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-        }
+        
         private async Task<(BitmapSource original, BitmapSource preview, byte[] previewPixels)> LoadAndProcessImageAsync(
     string path, bool previewToGray, IProgress<string> progress = null)
         {
@@ -2326,6 +2341,11 @@ namespace ImageToMidi
             if (colorPick)
                 colPicker.SendColor(c);
         }
+        private void OpenedImage_ColorAreaSelected(object sender, Color averageColor)
+        {
+            if (colorPick)
+                colPicker.SendColor(averageColor);
+        }
 
         // 新增方法：更新“宽高相等”模式下的高度数值
         /*private void UpdateHeightForSameAsWidth()
@@ -2803,7 +2823,8 @@ namespace ImageToMidi
                     case "FlowWithColor":
                     case "SplitToGrid":
                         noteLengthMode = tag == "FlowWithColor" ? NoteLengthMode.FlowWithColor : NoteLengthMode.SplitToGrid;
-                        if (noteSplitLength.Value <= 0) { 
+                        if (noteSplitLength.Value <= 0)
+                        {
                             noteSplitLength.Value = 1;
                             //输出提示信息
                             MessageBox.Show("分割长度不能小于等于0，已自动调整为1。");
@@ -3214,334 +3235,11 @@ namespace ImageToMidi
                 openedImagePixels = null;
             }
         }
-        // 在MainWindow类中添加
-        public ObservableCollection<BatchFileItem> BatchFileList = new ObservableCollection<BatchFileItem>();
-        private BatchWindow batchWindow;
 
-        // BatchButton点击事件
-        private void BatchButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (batchWindow == null)
-            {
-                batchWindow = new BatchWindow(BatchFileList);
-            }
-            // 如果窗口已最小化，则恢复为正常状态
-            if (batchWindow.WindowState == WindowState.Minimized)
-            {
-                batchWindow.WindowState = WindowState.Normal;
-            }
-            if (!batchWindow.IsVisible)
-            {
-                batchWindow.Show();
-            }
-            else
-            {
-                batchWindow.Activate();
-            }
-        }
-        public class BatchExportParams
-        {
-            public int TicksPerPixelValue { get; set; }
-            public int MidiPPQValue { get; set; }
-            public int StartOffsetValue { get; set; }
-            public int MidiBPMValue { get; set; }
-            public bool GenColorEvents { get; set; }
-        }
-        public async Task BatchExportMidiAsync(
-    IEnumerable<BatchFileItem> items,
-    string exportFolder,
-    IProgress<(int current, int total, string fileName)> progress = null)
-        {
-            var (processes, exportParams) = await PrepareBatchConversionProcesses(items, progress);
-            int i = 0;
-            foreach (var convert in processes)
-            {
-                var item = items.ElementAt(i);
-                string midiName = $"{item.Index:D2}_{System.IO.Path.GetFileNameWithoutExtension(item.FileName)}.mid";
-                string midiPath = System.IO.Path.Combine(exportFolder, midiName);
-                await Task.Run(() =>
-                {
-                    ConversionProcess.WriteMidi(
-                        midiPath,
-                        new[] { convert },
-                        exportParams.TicksPerPixelValue,
-                        exportParams.MidiPPQValue,
-                        exportParams.StartOffsetValue,
-                        exportParams.MidiBPMValue,
-                        exportParams.GenColorEvents
-                    );
-                });
-                i++;
-            }
-        }
+        
 
-        public async Task BatchExportMidiConcatAsync(
-            IEnumerable<BatchFileItem> items,
-            string outputMidiPath,
-            IProgress<(int current, int total, string fileName)> progress = null)
-        {
-            var (processes, exportParams) = await PrepareBatchConversionProcesses(items, progress);
-            await Task.Run(() =>
-            {
-                ConversionProcess.WriteMidi(
-                    outputMidiPath,
-                    processes,
-                    exportParams.TicksPerPixelValue,
-                    exportParams.MidiPPQValue,
-                    exportParams.StartOffsetValue,
-                    exportParams.MidiBPMValue,
-                    exportParams.GenColorEvents
-                );
-            });
-        }
-        // 合并导出：所有图片音符拼接到一个轨道
-        private async Task<(List<ConversionProcess> Processes, BatchExportParams ExportParams)> PrepareBatchConversionProcesses(
-    IEnumerable<BatchFileItem> items,
-    IProgress<(int current, int total, string fileName)> progress = null)
-        {
-            var itemList = items.ToList();
-            int total = itemList.Count;
-            int colorCount = (int)trackCount.Value;
-            int ticksPerPixelValue = (int)ticksPerPixel.Value;
-            int midiPPQValue = (int)midiPPQ.Value;
-            int startOffsetValue = (int)startOffset.Value;
-            int midiBPMValue = (int)midiBPM.Value;
-            int firstKey = (int)firstKeyNumber.Value;
-            int lastKey = (int)lastKeyNumber.Value;
-            int noteSplitLengthValue = (int)noteSplitLength.Value;
-            int targetHeight = GetTargetHeight();
-            ResizeAlgorithm resizeAlgorithmValue = currentResizeAlgorithm;
-            var keyList = GetKeyList();
-            var noteLengthModeValue = noteLengthMode;
-            var whiteKeyModeValue = whiteKeyMode;
-            int effectiveWidth = GetEffectiveKeyWidth();
+        
 
-            // 聚类算法参数
-            var selectedItem = ClusterMethodComboBox.SelectedItem as ComboBoxItem;
-            var method = Clusterisation.PaletteClusterMethod.OnlyWpf;
-            var floydBaseMethod = Clusterisation.PaletteClusterMethod.OnlyWpf;
-            if (selectedItem != null)
-            {
-                var tag = selectedItem.Tag as string;
-                switch (tag)
-                {
-                    case "OnlyWpf": method = Clusterisation.PaletteClusterMethod.OnlyWpf; break;
-                    case "OnlyKMeansPlusPlus": method = Clusterisation.PaletteClusterMethod.OnlyKMeansPlusPlus; break;
-                    case "KMeans": method = Clusterisation.PaletteClusterMethod.KMeans; break;
-                    case "KMeansPlusPlus": method = Clusterisation.PaletteClusterMethod.KMeansPlusPlus; break;
-                    case "Popularity": method = Clusterisation.PaletteClusterMethod.Popularity; break;
-                    case "Octree": method = Clusterisation.PaletteClusterMethod.Octree; break;
-                    case "VarianceSplit": method = Clusterisation.PaletteClusterMethod.VarianceSplit; break;
-                    case "Pca": method = Clusterisation.PaletteClusterMethod.Pca; break;
-                    case "MaxMin": method = Clusterisation.PaletteClusterMethod.MaxMin; break;
-                    case "NativeKMeans": method = Clusterisation.PaletteClusterMethod.NativeKMeans; break;
-                    case "MeanShift": method = Clusterisation.PaletteClusterMethod.MeanShift; break;
-                    case "DBSCAN": method = Clusterisation.PaletteClusterMethod.DBSCAN; break;
-                    case "GMM": method = Clusterisation.PaletteClusterMethod.GMM; break;
-                    case "Hierarchical": method = Clusterisation.PaletteClusterMethod.Hierarchical; break;
-                    case "Spectral": method = Clusterisation.PaletteClusterMethod.Spectral; break;
-                    case "LabKMeans": method = Clusterisation.PaletteClusterMethod.LabKMeans; break;
-                    case "FloydSteinbergDither": method = Clusterisation.PaletteClusterMethod.FloydSteinbergDither; break;
-                    case "OrderedDither": method = Clusterisation.PaletteClusterMethod.OrderedDither; break;
-                    case "OPTICS": method = Clusterisation.PaletteClusterMethod.OPTICS; break;
-                    case "FixedBitPalette": method = Clusterisation.PaletteClusterMethod.FixedBitPalette; break;
-                }
-                if (FloydBaseMethodBox != null)
-                {
-                    var baseTag = ((ComboBoxItem)FloydBaseMethodBox.SelectedItem)?.Tag as string;
-                    switch (baseTag)
-                    {
-                        case "OnlyWpf": floydBaseMethod = Clusterisation.PaletteClusterMethod.OnlyWpf; break;
-                        case "OnlyKMeansPlusPlus": floydBaseMethod = Clusterisation.PaletteClusterMethod.OnlyKMeansPlusPlus; break;
-                        case "KMeans": floydBaseMethod = Clusterisation.PaletteClusterMethod.KMeans; break;
-                        case "Pca": floydBaseMethod = Clusterisation.PaletteClusterMethod.Pca; break;
-                        case "DBSCAN": floydBaseMethod = Clusterisation.PaletteClusterMethod.DBSCAN; break;
-                    }
-                }
-            }
-
-            // 收集所有图片的ConversionProcess
-            var processList = new List<ConversionProcess>();
-            for (int i = 0; i < total; i++)
-            {
-                var item = itemList[i];
-                progress?.Report((i + 1, total, item.FileName));
-                string imgPath = item.FullPath ?? item.FileName;
-                if (!File.Exists(imgPath)) continue;
-
-                BitmapSource src = null;
-                string ext = System.IO.Path.GetExtension(imgPath).ToLowerInvariant();
-
-                // 1. 位图格式
-                string[] bitmapAllowed = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp" };
-                string[] svgAllowed = { ".svg" };
-                string[] gsVectorAllowed = { ".eps", ".ai", ".pdf" };
-
-                if (bitmapAllowed.Contains(ext))
-                {
-                    byte[] imageBytes = await Task.Run(() => File.ReadAllBytes(imgPath));
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        using (var ms = new MemoryStream(imageBytes))
-                        {
-                            var bmp = new BitmapImage();
-                            bmp.BeginInit();
-                            bmp.CacheOption = BitmapCacheOption.OnLoad;
-                            bmp.StreamSource = ms;
-                            bmp.EndInit();
-                            bmp.Freeze();
-                            src = bmp;
-                        }
-                    });
-                }
-                // 2. SVG格式
-                else if (svgAllowed.Contains(ext))
-                {
-                    int keyWidth = GetEffectiveKeyWidth();
-                    int targetHeightBatch = GetTargetHeight();
-                    await Task.Run(() =>
-                    {
-                        var svgDoc = Svg.SvgDocument.Open(imgPath);
-                        using (var bitmap = new System.Drawing.Bitmap(keyWidth, targetHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
-                        using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
-                        {
-                            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
-                            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-                            graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.None;
-                            graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
-                            graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-                            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixel;
-                            var viewBox = svgDoc.ViewBox;
-                            graphics.TranslateTransform(-viewBox.MinX, -viewBox.MinY);
-                            graphics.ScaleTransform((float)keyWidth / viewBox.Width, (float)targetHeight / viewBox.Height);
-                            svgDoc.Draw(graphics);
-                            src = ConvertBitmapToBitmapSource(bitmap);
-                            src.Freeze();
-                        }
-                    });
-                }
-                // 3. EPS/AI/PDF格式
-                else if (gsVectorAllowed.Contains(ext))
-                {
-                    int keyWidth = GetEffectiveKeyWidth();
-                    int targetHeightBatch = GetTargetHeight();
-                    src = await Task.Run(() => RenderGsVectorToBitmapSource(imgPath, keyWidth, targetHeight));
-                }
-                else
-                {
-                    // 不支持的格式，跳过
-                    continue;
-                }
-
-                // 2. 旋转/翻转/灰度
-                int rot = previewRotation;
-                bool flip = previewFlip;
-                bool isGray = grayScaleCheckBox.IsChecked == true;
-                if (flip)
-                {
-                    if (rot == 90) rot = 270;
-                    else if (rot == 270) rot = 90;
-                }
-                switch (rot)
-                {
-                    case 90: src = await Rotate90(src); break;
-                    case 180: src = await Rotate180(src); break;
-                    case 270: src = await Rotate270(src); break;
-                }
-                if (flip) src = await FlipHorizontal(src);
-                if (isGray) src = ToGrayScale(src);
-                if (src != null && !src.IsFrozen) src.Freeze();
-
-                // 3. 提取像素
-                int width = src.PixelWidth, height = src.PixelHeight, stride = width * 4;
-                byte[] pixels = new byte[height * stride];
-                src.CopyPixels(pixels, stride, 0);
-
-                // 4. 生成色板
-                var options = new ClusteriseOptions
-                {
-                    ColorCount = colorCount,
-                    Method = method,
-                    Src = src,
-                    KMeansThreshold = kmeansThreshold,
-                    KMeansMaxIterations = kmeansMaxIterations,
-                    KMeansPlusPlusMaxSamples = kmeansPlusPlusMaxSamples,
-                    KMeansPlusPlusSeed = kmeansPlusPlusSeed,
-                    OctreeMaxLevel = octreeMaxLevel,
-                    OctreeMaxSamples = octreeMaxSamples,
-                    VarianceSplitMaxSamples = varianceSplitMaxSamples,
-                    PcaPowerIterations = pcaPowerIterations,
-                    PcaMaxSamples = pcaMaxSamples,
-                    WeightedMaxMinIters = weightedMaxMinIters,
-                    WeightedMaxMinMaxSamples = weightedMaxMinMaxSamples,
-                    NativeKMeansIterations = nativeKMeansIterations,
-                    NativeKMeansRate = nativeKMeansRate,
-                    MeanShiftBandwidth = meanShiftBandwidth,
-                    MeanShiftMaxIter = meanShiftMaxIter,
-                    MeanShiftMaxSamples = meanShiftMaxSamples,
-                    DbscanEpsilon = dbscanEpsilon,
-                    DbscanMinPts = dbscanMinPts,
-                    DbscanMaxSamples = dbscanMaxSamples,
-                    GmmMaxIter = gmmMaxIter,
-                    GmmTol = gmmTol,
-                    GmmMaxSamples = gmmMaxSamples,
-                    HierarchicalMaxSamples = hierarchicalMaxSamples,
-                    HierarchicalLinkage = hierarchicalLinkage,
-                    HierarchicalDistanceType = hierarchicalDistanceType,
-                    SpectralMaxSamples = spectralMaxSamples,
-                    SpectralSigma = spectralSigma,
-                    SpectralKMeansIters = spectralKMeansIters,
-                    LabKMeansMaxIterations = labKMeansMaxIterations,
-                    LabKMeansThreshold = labKMeansThreshold,
-                    FloydBaseMethod = (method == Clusterisation.PaletteClusterMethod.FloydSteinbergDither) ? floydBaseMethod : floydBaseMethod,
-                    FloydDitherStrength = floydDitherStrength,
-                    FloydSerpentine = floydSerpentine,
-                    OrderedDitherStrength = orderedDitherStrength,
-                    OrderedDitherMatrixSize = orderedDitherMatrixSize,
-                    OpticsEpsilon = opticsEpsilon,
-                    OpticsMinPts = opticsMinPts,
-                    OpticsMaxSamples = opticsMaxSamples,
-                    BitDepth = fixedBitDepth,
-                    UseGrayFixedPalette = useGrayFixedPalette,
-                };
-
-                double lastChange;
-                byte[] ditheredPixels;
-                var palette = Clusterisation.ClusteriseByMethod(
-                    pixels, options, out lastChange, out ditheredPixels, null);
-
-                // 5. 生成音符
-                var convert = new ConversionProcess(
-                    palette,
-                    pixels,
-                    width * 4,
-                    firstKey,
-                    lastKey + 1,
-                    noteLengthModeValue == NoteLengthMode.SplitToGrid,
-                    noteLengthModeValue != NoteLengthMode.Unlimited ? noteSplitLengthValue : 0,
-                    targetHeight,
-                    resizeAlgorithmValue,
-                    keyList,
-                    whiteKeyModeValue == WhiteKeyMode.WhiteKeysFixed,
-                    whiteKeyModeValue == WhiteKeyMode.BlackKeysFixed,
-                    whiteKeyModeValue == WhiteKeyMode.WhiteKeysClipped,
-                    whiteKeyModeValue == WhiteKeyMode.BlackKeysClipped
-                );
-                convert.EffectiveWidth = effectiveWidth;
-
-                await convert.RunProcessAsync(null);
-
-                processList.Add(convert);
-            }
-            var exportParams = new BatchExportParams
-            {
-                TicksPerPixelValue = ticksPerPixelValue,
-                MidiPPQValue = midiPPQValue,
-                StartOffsetValue = startOffsetValue,
-                MidiBPMValue = midiBPMValue,
-                GenColorEvents = (bool)genColorEventsCheck.IsChecked
-            };
-            return (processList, exportParams);
-        }
+        
     }
 }

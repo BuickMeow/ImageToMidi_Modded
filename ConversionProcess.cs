@@ -13,9 +13,99 @@ using System.Windows.Media.Imaging;
 
 namespace ImageToMidi
 {
-    class ConversionProcess
+    class ConversionProcess : IDisposable
     {
-        BitmapPalette Palette;
+        private bool disposed = false;
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    // 清理托管资源
+                    if (Image != null)
+                    {
+                        Image.Dispose();
+                        Image = null;
+                    }
+
+                    // 清理大数组
+                    if (resizedImage != null)
+                    {
+                        Array.Clear(resizedImage, 0, resizedImage.Length);
+                        resizedImage = null;
+                    }
+
+                    if (imageData != null)
+                    {
+                        Array.Clear(imageData, 0, imageData.Length);
+                        imageData = null;
+                    }
+
+                    // 清理事件缓冲区 - 使用 FastList 兼容的方式
+                    if (EventBuffers != null)
+                    {
+                        for (int i = 0; i < EventBuffers.Length; i++)
+                        {
+                            if (EventBuffers[i] != null)
+                            {
+                                // 方法1：使用 Unlink() 方法（如果可用）
+                                try
+                                {
+                                    EventBuffers[i].Unlink();
+                                }
+                                catch
+                                {
+                                    // 如果 Unlink 失败，尝试通过迭代器清空
+                                    // 方法2：通过 Pop() 逐个移除元素
+                                    try
+                                    {
+                                        while (!EventBuffers[i].ZeroLen)
+                                        {
+                                            EventBuffers[i].Pop();
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        // 如果都不行，至少置空引用
+                                    }
+                                }
+                                EventBuffers[i] = null;
+                            }
+                        }
+                    }
+
+                    // 清理其他引用
+                    Palette = null;
+                    keyList = null;
+                    paletteLabCache = null;
+                    noteCountPerColor = null;
+
+                    // 取消任何正在进行的任务
+                    ForceCancel();
+                }
+                disposed = true;
+            }
+        }
+
+        ~ConversionProcess()
+        {
+            Dispose(false);
+        }
+
+        // 添加检查方法
+        private void ThrowIfDisposed()
+        {
+            if (disposed)
+                throw new ObjectDisposedException(nameof(ConversionProcess));
+        }
+        public BitmapPalette Palette;
         byte[] imageData;
         int imageStride;
         private volatile bool cancelled = false;
@@ -52,7 +142,7 @@ namespace ImageToMidi
         private bool whiteKeyFixed = false;
         private bool blackKeyFixed = false;
 
-        private int targetHeight;
+        public int targetHeight;
         private int[] noteCountPerColor;
 
         private ImageToMidi.GetColorID.PaletteLabCache paletteLabCache;
